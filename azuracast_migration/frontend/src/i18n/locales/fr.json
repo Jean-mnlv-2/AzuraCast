@@ -1,0 +1,297 @@
+{
+  "common": {
+    "loading": "Chargement...",
+    "cancel": "Annuler",
+    "save": "Enregistrer",
+    "save_changes": "Enregistrer les modifications",
+    "edit": "Modifier",
+    "delete": "Supprimer",
+    "create": "Créer",
+    "actions": "Actions",
+    "status": "Statut",
+    "online": "En ligne",
+    "offline": "Hors ligne",
+    "live": "LIVE",
+    "search": "Rechercher...",
+    "logout": "Déconnexion",
+    "theme": "Thème",
+    "language": "Langue"
+  },
+  "nav": {
+    "dashboard": "Tableau de bord",
+    "stations": "Stations",
+    "media": "Médias",
+    "users": "Utilisateurs",
+    "settings": "Paramètres",
+    "back_to_dashboard": "Retour au Dashboard",
+    "profile": "Profil Station",
+    "playlists": "Playlists",
+    "streamers": "Streamers/DJs",
+    "webhooks": "Webhooks",
+    "mounts": "Points de Montage",
+    "remotes": "Relais Distants",
+    "hls_streams": "Flux HLS",
+    "sftp_users": "Utilisateurs SFTP",
+    "analytics": "Audience"
+  },
+  "login": {
+    "title": "Connexion",
+    "email": "Adresse Email",
+    "password": "Mot de passe",
+    "remember_me": "Se souvenir de moi",
+    "forgot_password": "Mot de passe oublié ?",
+    "submit": "Se connecter",
+    "error_invalid": "Identifiants invalides. Veuillez réessayer.",
+    "error_generic": "Une erreur est survenue lors de la connexion."
+  },
+  "stations": {
+    "title": "Stations Radio",
+    "subtitle": "Gérez vos stations et diffusez en direct.",
+    "new_station": "Nouvelle Station",
+    "manage": "Gérer",
+    "restart": "Redémarrer",
+    "stop": "Arrêter",
+    "configuration": "Configuration",
+    "stats": "Stats",
+    "public_page": "Page publique",
+    "create_modal": {
+      "title": "Créer une nouvelle station",
+      "name": "Nom de la station",
+      "slug": "Nom court (Slug)",
+      "slug_help": "Utilisé dans les URLs et dossiers.",
+      "backend_type": "Type de Backend",
+      "frontend_type": "Type de Frontend"
+    }
+  },
+  "media": {
+    "title": "Médiathèque",
+    "subtitle": "Gérez vos fichiers audio et organisez vos dossiers.",
+    "upload": "Transférer",
+    "new_folder": "Nouveau Dossier",
+    "select_all": "Sélectionner tout",
+    "table": {
+      "title": "Titre / Fichier",
+      "artist": "Artiste / Album",
+      "duration": "Durée"
+    },
+    "upload_modal": {
+      "title": "Transférer des fichiers",
+      "dropzone": "Glissez-déposez vos fichiers ici",
+      "formats": "Formats supportés : MP3, OGG, WAV, FLAC, AAC",
+      "browse": "Parcourir les fichiers"
+    }
+  },
+  "users": {
+    "title": "Utilisateurs",
+    "subtitle": "Gérez les comptes et les permissions d'accès.",
+    "new_user": "Nouvel Utilisateur",
+    "search_placeholder": "Rechercher un utilisateur...",
+    "table": {
+      "user": "Utilisateur",
+      "role": "Rôle",
+      "status": "Statut"
+    },
+    "roles": {
+      "admin": "Super Administrateur",
+      "user": "Utilisateur"
+    },
+    "status": {
+      "active": "Actif",
+      "inactive": "Inactif"
+    },
+    "modal": {
+      "title": "Ajouter un utilisateur",
+      "name": "Nom Complet",
+      "email": "Adresse Email",
+      "password": "Mot de passe",
+      "is_superuser": "Droits Super Administrateur"
+    }
+  },
+  "mounts": {
+    "title": "Points de Montage",
+    "subtitle": "Gérez vos points de diffusion radio.",
+    "new_mount": "Nouveau Point de Montage",
+    "default": "Défaut",
+    "public": "Public"
+  },
+  "remotes": {
+    "title": "Relais Distants",
+    "subtitle": "Configurez des relais vers d'autres serveurs Icecast/Shoutcast.",
+    "new_remote": "Nouveau Relais",
+    "autodj_enabled": "AutoDJ Activé"
+  },
+  "admin": {
+    "settings": {
+      "title": "Paramètres Système",
+      "subtitle": "Configuration globale de l'instance BantuWave.",
+      "general": "Général",
+      "branding": "Branding",
+      "mail": "Configuration Mail",
+      "base_url": "URL de base",
+      "instance_name": "Nom de l'instance",
+      "public_theme": "Thème public",
+      "hide_album_art": "Masquer les pochettes d'album",
+      "smtp_host": "Hôte SMTP",
+      "smtp_port": "Port SMTP",
+      "smtp_secure": "Sécurité SMTP",
+      "external_services": "Services Externes",
+      "last_fm_api_key": "Clé API Last.fm",
+      "geolite_license_key": "Clé de licence GeoLite",
+      "geolite_help": "Utilisé pour la géolocalisation des auditeurs. Nécessite une clé de licence gratuite de MaxMind."
+    }
+  },
+  "station_settings": {
+    "title": "Paramètres de la Station",
+    "subtitle": "Gérez la configuration de base et les réglages de diffusion.",
+    "back_to_profile": "Retour au profil",
+    "tabs": {
+      "basic": "Informations de base",
+      "branding": "Personnalisation & Branding",
+      "ads": "Publicité (Ad-Server)",
+      "broadcast": "Diffusion & AutoDJ",
+      "advanced": "Options Avancées"
+    },
+    "basic": {
+      "name": "Nom de la station",
+      "description": "Description",
+      "genre": "Genre",
+      "url": "URL du site web",
+      "enable_public_page": "Activer la page publique"
+    },
+    "branding": {
+      "visual": "Personnalisation Visuelle",
+      "primary_color": "Couleur Principale",
+      "secondary_color": "Couleur Secondaire",
+      "social": "Réseaux Sociaux & Widgets",
+      "show_social": "Afficher les widgets sociaux sur la page publique",
+      "twitter": "Compte Twitter (@username)",
+      "instagram": "Compte Instagram"
+    },
+    "ads": {
+      "module_title": "Module de Publicité BantuWave",
+      "module_desc": "Configurez l'insertion automatique de spots publicitaires dans votre flux.",
+      "enabled": "Activer l'insertion publicitaire",
+      "interval": "Intervalle (minutes)",
+      "source": "Source des publicités",
+      "sources": {
+        "local": "Playlists locales (Spots)",
+        "vast": "VAST/VMAP (Serveur tiers)"
+      },
+      "regie": {
+        "title": "Régie Publicitaire Professionnelle",
+        "desc": "Gérez vos campagnes publicitaires avec des créneaux horaires et des dates précises.",
+        "add": "Ajouter une Publicité",
+        "edit": "Modifier la Publicité",
+        "table": {
+          "name": "Nom de la Campagne",
+          "schedule": "Planification",
+          "status": "Statut"
+        },
+        "modal": {
+          "name": "Nom de la publicité",
+          "audio_file": "Fichier audio",
+          "audio_file_help": "Téléchargez un fichier audio directement (MP3, WAV, etc.)",
+          "media_url": "URL du média (audio)",
+          "play_interval": "Intervalle de lecture (minutes)",
+          "play_interval_help": "0 pour désactiver l'intervalle fixe",
+          "start_time": "Heure de début",
+          "end_time": "Heure de fin",
+          "start_date": "Date de début",
+          "end_date": "Date de fin",
+          "days": "Jours de diffusion"
+        },
+        "no_ads": "Aucune publicité configurée.",
+        "delete_confirm": "Voulez-vous vraiment supprimer cette publicité ?"
+      }
+    },
+    "broadcast": {
+      "crossfade": "Durée du fondu enchaîné (Crossfade) - secondes",
+      "enabled": "Station activée",
+      "hls": "Activer le streaming HLS (Expérimental)"
+    },
+    "advanced": {
+      "info_title": "Configuration Radio BantuWave",
+      "info_desc": "La plupart des paramètres avancés sont gérés automatiquement pour garantir une stabilité maximale. Pour des besoins spécifiques (Transcodage personnalisé, ports fixes), veuillez contacter l'administrateur.",
+      "liquidsoap": "Intégration Liquidsoap",
+      "liquidsoap_version": "Version 2.2.x active"
+    },
+    "save_success": "Paramètres enregistrés avec succès !"
+  },
+  "analytics": {
+    "title": "Statistiques d'Audience",
+    "refresh": "Actualiser",
+    "report_royalty": "Rapport Droits d'Auteur (CSV)",
+    "geo": {
+      "title": "Géolocalisation des Auditeurs",
+      "country": "Pays",
+      "listeners": "Auditeurs",
+      "no_data": "Aucune donnée géographique disponible."
+    },
+    "retention": {
+      "title": "Analyse de Rétention",
+      "desc": "Le morceau <strong>\"Now Playing\"</strong> a conservé {{percent}}% de votre audience sur les 5 dernières minutes.",
+      "loyalty": "Taux de Fidélité"
+    },
+    "metrics": {
+      "avg": "Moyenne Auditeurs",
+      "peak": "Pic d'Audience",
+      "unique": "Auditeurs Uniques",
+      "vs_yesterday": "+{{percent}}% vs hier",
+      "max_recorded": "Maximum enregistré",
+      "last_24h": "Sur les dernières 24h"
+    },
+    "history": {
+      "title": "Historique Détaillé",
+      "date": "Date & Heure",
+      "min": "Minimum",
+      "max": "Maximum",
+      "avg": "Moyenne",
+      "unique": "Uniques",
+      "no_data": "Aucune donnée statistique",
+      "no_data_desc": "Les données apparaîtront après les premières diffusions."
+    }
+  },
+  "streamers": {
+    "title": "DJs & Streamers Live",
+    "new": "Créer un Compte DJ",
+    "edit": "Modifier Compte DJ",
+    "harbor_title": "Configuration Harbor",
+    "harbor_desc": "Utilisez ces comptes pour vous connecter en direct via votre logiciel de diffusion (BUTT, Mixxx, etc.) sur le port <strong>8005</strong>.",
+    "table": {
+      "user": "Identifiant DJ",
+      "display_name": "Nom d'Affichage",
+      "status": "Statut Accès"
+    },
+    "status": {
+      "allowed": "Autorisé",
+      "blocked": "Bloqué"
+    },
+    "modal": {
+      "user": "Identifiant DJ",
+      "pass": "Mot de passe DJ",
+      "pass_change": "Changer le mot de passe (optionnel)",
+      "display_name": "Nom d'Affichage"
+    },
+    "no_data": "Aucun DJ configuré",
+    "no_data_desc": "Ajoutez des comptes pour permettre la diffusion en direct.",
+    "delete_confirm": "Voulez-vous vraiment supprimer ce compte DJ ?"
+  },
+  "webhooks": {
+    "title": "Webhooks & Notifications",
+    "new": "Nouveau Webhook",
+    "edit": "Modifier Webhook",
+    "table": {
+      "service": "Service / Nom",
+      "triggers": "Événements Déclencheurs",
+      "status": "Statut"
+    },
+    "modal": {
+      "name": "Nom du Webhook",
+      "type": "Type de Service",
+      "url": "URL du Webhook"
+    },
+    "no_data": "Aucun webhook configuré",
+    "no_data_desc": "Connectez votre radio BantuWave à Discord, Telegram ou d'autres services.",
+    "delete_confirm": "Voulez-vous vraiment supprimer ce webhook ?"
+  }
+}

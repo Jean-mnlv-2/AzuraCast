@@ -1,0 +1,27 @@
+# BantuWave — build context
+
+.git
+.gitignore
+
+README.md
+*.md
+
+.env
+.env.sample
+Makefile
+
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+**/*.pyd
+backend/venv/
+backend/.pytest_cache/
+
+**/node_modules/
+frontend/dist/
+frontend/.npm/
+
+backend/media/
+backend/static/
+postgres_data/
+redis_data/

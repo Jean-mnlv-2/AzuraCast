@@ -1,0 +1,27 @@
+# Usage: docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+# Remplace le service web par Vite et expose le backend pour le débogage.
+
+services:
+  web:
+    profiles:
+      - never
+  backend:
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+    command: daphne -b 0.0.0.0 -p 8000 bantuwave.asgi:application
+  frontend:
+    build:
+      context: ./frontend
+    command: npm run dev -- --host 0.0.0.0
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    ports:
+      - "3000:5173"
+    env_file:
+      - .env
+    depends_on:
+      backend:
+        condition: service_healthy

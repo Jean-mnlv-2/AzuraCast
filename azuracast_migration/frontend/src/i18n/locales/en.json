@@ -1,0 +1,283 @@
+{
+  "common": {
+    "loading": "Loading...",
+    "cancel": "Cancel",
+    "save": "Save",
+    "edit": "Edit",
+    "delete": "Delete",
+    "create": "Create",
+    "actions": "Actions",
+    "status": "Status",
+    "online": "Online",
+    "offline": "Offline",
+    "live": "LIVE",
+    "search": "Search...",
+    "logout": "Logout",
+    "theme": "Theme",
+    "language": "Language"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "stations": "Stations",
+    "media": "Media",
+    "analytics": "Analytics",
+    "users": "Users",
+    "settings": "Settings",
+    "back_to_dashboard": "Back to Dashboard",
+    "profile": "Station Profile",
+    "playlists": "Playlists",
+    "streamers": "Streamers/DJs",
+    "webhooks": "Webhooks",
+    "mounts": "Mount Points",
+    "remotes": "Remote Relays",
+    "hls_streams": "HLS Streams",
+    "sftp_users": "SFTP Users"
+  },
+  "login": {
+    "title": "Login",
+    "email": "Email Address",
+    "password": "Password",
+    "remember_me": "Remember me",
+    "forgot_password": "Forgot password?",
+    "submit": "Log In",
+    "error_invalid": "Invalid credentials. Please try again.",
+    "error_generic": "An error occurred during login."
+  },
+  "stations": {
+    "title": "Radio Stations",
+    "subtitle": "Manage your stations and broadcast live.",
+    "new_station": "New Station",
+    "manage": "Manage",
+    "restart": "Restart",
+    "stop": "Stop",
+    "configuration": "Configuration",
+    "stats": "Stats",
+    "public_page": "Public Page",
+    "create_modal": {
+      "title": "Create New Station",
+      "name": "Station Name",
+      "slug": "Short Name (Slug)",
+      "slug_help": "Used in URLs and folders.",
+      "backend_type": "Backend Type",
+      "frontend_type": "Frontend Type"
+    }
+  },
+  "media": {
+    "title": "Media Library",
+    "subtitle": "Manage your audio files and organize folders.",
+    "upload": "Upload",
+    "new_folder": "New Folder",
+    "select_all": "Select All",
+    "table": {
+      "title": "Title / File",
+      "artist": "Artist / Album",
+      "duration": "Duration"
+    },
+    "upload_modal": {
+      "title": "Upload Files",
+      "dropzone": "Drag and drop your files here",
+      "formats": "Supported formats: MP3, OGG, WAV, FLAC, AAC",
+      "browse": "Browse Files"
+    }
+  },
+  "users": {
+    "title": "Users",
+    "subtitle": "Manage accounts and access permissions.",
+    "new_user": "New User",
+    "search_placeholder": "Search for a user...",
+    "table": {
+      "user": "User",
+      "role": "Role",
+      "status": "Status"
+    },
+    "roles": {
+      "admin": "Super Administrator",
+      "user": "User"
+    },
+    "status": {
+      "active": "Active",
+      "inactive": "Inactive"
+    },
+    "modal": {
+      "title": "Add User",
+      "name": "Full Name",
+      "email": "Email Address",
+      "password": "Password",
+      "is_superuser": "Super Administrator Rights"
+    }
+  },
+  "admin": {
+    "settings": {
+      "title": "System Settings",
+      "subtitle": "Global configuration for the BantuWave instance.",
+      "general": "General",
+      "branding": "Branding",
+      "mail": "Mail Configuration",
+      "base_url": "Base URL",
+      "instance_name": "Instance Name",
+      "public_theme": "Public Theme",
+      "hide_album_art": "Hide Album Art",
+      "smtp_host": "SMTP Host",
+      "smtp_port": "SMTP Port",
+      "smtp_secure": "SMTP Security",
+      "external_services": "External Services",
+      "last_fm_api_key": "Last.fm API Key",
+      "geolite_license_key": "GeoLite License Key",
+      "geolite_help": "Used for IP Geolocation. Requires a free license key from MaxMind."
+    }
+  },
+  "station_settings": {
+    "title": "Station Settings",
+    "subtitle": "Manage basic configuration and broadcast settings.",
+    "back_to_profile": "Back to profile",
+    "tabs": {
+      "basic": "Basic Information",
+      "branding": "Customization & Branding",
+      "ads": "Advertising (Ad-Server)",
+      "broadcast": "Broadcast & AutoDJ",
+      "advanced": "Advanced Options"
+    },
+    "basic": {
+      "name": "Station Name",
+      "description": "Description",
+      "genre": "Genre",
+      "url": "Website URL",
+      "enable_public_page": "Enable public page"
+    },
+    "branding": {
+      "visual": "Visual Customization",
+      "primary_color": "Primary Color",
+      "secondary_color": "Secondary Color",
+      "social": "Social Media & Widgets",
+      "show_social": "Show social widgets on public page",
+      "twitter": "Twitter Account (@username)",
+      "instagram": "Instagram Account"
+    },
+    "ads": {
+      "module_title": "BantuWave Advertising Module",
+      "module_desc": "Configure automatic insertion of ads into your stream.",
+      "enabled": "Enable ad insertion",
+      "interval": "Interval (minutes)",
+      "source": "Ad Source",
+      "sources": {
+        "local": "Local Playlists (Spots)",
+        "vast": "VAST/VMAP (Third-party server)"
+      },
+      "regie": {
+        "title": "Professional Advertising Regie",
+        "desc": "Manage your advertising campaigns with precise time slots and dates.",
+        "add": "Add Advertisement",
+        "edit": "Edit Advertisement",
+        "table": {
+          "name": "Campaign Name",
+          "schedule": "Schedule",
+          "status": "Status"
+        },
+        "modal": {
+          "name": "Advertisement name",
+          "audio_file": "Audio file",
+          "audio_file_help": "Upload an audio file directly (MP3, WAV, etc.)",
+          "media_url": "Media URL (audio)",
+          "play_interval": "Play interval (minutes)",
+          "play_interval_help": "0 to disable fixed interval",
+          "start_time": "Start time",
+          "end_time": "End time",
+          "start_date": "Start date",
+          "end_date": "End date",
+          "days": "Broadcast days"
+        },
+        "no_ads": "No advertisements configured.",
+        "delete_confirm": "Are you sure you want to delete this advertisement?"
+      }
+    },
+    "broadcast": {
+      "crossfade": "Crossfade Duration (seconds)",
+      "enabled": "Station enabled",
+      "hls": "Enable HLS streaming (Experimental)"
+    },
+    "advanced": {
+      "info_title": "BantuWave Radio Configuration",
+      "info_desc": "Most advanced settings are managed automatically for maximum stability. For specific needs (Custom transcoding, fixed ports), please contact the administrator.",
+      "liquidsoap": "Liquidsoap Integration",
+      "liquidsoap_version": "Version 2.2.x active"
+    },
+    "save_success": "Settings saved successfully!"
+  },
+  "analytics": {
+    "title": "Audience Statistics",
+    "refresh": "Refresh",
+    "report_royalty": "Royalty Report (CSV)",
+    "geo": {
+      "title": "Listener Geolocation",
+      "country": "Country",
+      "listeners": "Listeners",
+      "no_data": "No geographic data available."
+    },
+    "retention": {
+      "title": "Retention Analysis",
+      "desc": "The track <strong>\"Now Playing\"</strong> retained {{percent}}% of your audience over the last 5 minutes.",
+      "loyalty": "Loyalty Rate"
+    },
+    "metrics": {
+      "avg": "Average Listeners",
+      "peak": "Audience Peak",
+      "unique": "Unique Listeners",
+      "vs_yesterday": "+{{percent}}% vs yesterday",
+      "max_recorded": "Maximum recorded",
+      "last_24h": "Last 24 hours"
+    },
+    "history": {
+      "title": "Detailed History",
+      "date": "Date & Time",
+      "min": "Minimum",
+      "max": "Maximum",
+      "avg": "Average",
+      "unique": "Uniques",
+      "no_data": "No statistical data",
+      "no_data_desc": "Data will appear after the first broadcasts."
+    }
+  },
+  "streamers": {
+    "title": "Live DJs & Streamers",
+    "new": "Create DJ Account",
+    "edit": "Edit DJ Account",
+    "harbor_title": "Harbor Configuration",
+    "harbor_desc": "Use these accounts to connect live via your broadcasting software (BUTT, Mixxx, etc.) on port <strong>8005</strong>.",
+    "table": {
+      "user": "DJ Username",
+      "display_name": "Display Name",
+      "status": "Access Status"
+    },
+    "status": {
+      "allowed": "Allowed",
+      "blocked": "Blocked"
+    },
+    "modal": {
+      "user": "DJ Username",
+      "pass": "DJ Password",
+      "pass_change": "Change password (optional)",
+      "display_name": "Display Name"
+    },
+    "no_data": "No DJs configured",
+    "no_data_desc": "Add accounts to enable live broadcasting.",
+    "delete_confirm": "Are you sure you want to delete this DJ account?"
+  },
+  "webhooks": {
+    "title": "Webhooks & Notifications",
+    "new": "New Webhook",
+    "edit": "Edit Webhook",
+    "table": {
+      "service": "Service / Name",
+      "triggers": "Trigger Events",
+      "status": "Status"
+    },
+    "modal": {
+      "name": "Webhook Name",
+      "type": "Service Type",
+      "url": "Webhook URL"
+    },
+    "no_data": "No webhooks configured",
+    "no_data_desc": "Connect your BantuWave radio to Discord, Telegram or other services.",
+    "delete_confirm": "Are you sure you want to delete this webhook?"
+  }
+}
