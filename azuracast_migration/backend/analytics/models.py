@@ -59,3 +59,23 @@ class Listener(models.Model):
             models.Index(fields=['device_os_family']),
             models.Index(fields=['device_browser_family']),
         ]
+
+class AdvertisementPlayback(models.Model):
+    station = models.ForeignKey('stations.Station', on_delete=models.CASCADE, related_name='ad_playback_history')
+    advertisement = models.ForeignKey('stations.StationAdvertisement', on_delete=models.CASCADE, related_name='playback_history')
+    
+    timestamp_start = models.DateTimeField(auto_now_add=True)
+    timestamp_end = models.DateTimeField(null=True, blank=True)
+    
+    listeners_start = models.IntegerField(default=0)
+    listeners_end = models.IntegerField(default=0)
+    
+    is_confirmed_by_log = models.BooleanField(default=False)
+    log_line = models.TextField(null=True, blank=True)
+
+    class Meta:
+        db_table = 'advertisement_playback'
+        indexes = [
+            models.Index(fields=['timestamp_start']),
+            models.Index(fields=['station', 'advertisement']),
+        ]

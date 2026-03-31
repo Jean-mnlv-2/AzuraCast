@@ -1,10 +1,72 @@
 import datetime
 import pytz
 from django.utils import timezone
-from stations.models import StationPlaylist, StationSchedule, StationStreamer
+from stations.models import StationPlaylist, StationSchedule, StationStreamer, StationAdvertisement
 from .models import StationQueue
+from bantuwave.services import GeoLiteService
 
 class Scheduler:
+    def should_advertisement_play_now(self, advertisement: StationAdvertisement, now: datetime.datetime = None, listener_ip: str = None) -> bool:
+        if now is None:
+            now = timezone.now()
+        
+        if not advertisement.is_active or advertisement.play_interval <= 0:
+            return False
+
+        if listener_ip and (advertisement.target_countries or advertisement.target_cities):
+            geo_service = GeoLiteService()
+            location = geo_service.get_location(listener_ip)
+            
+            if advertisement.target_countries:
+                target_countries = [c.strip().upper() for c in advertisement.target_countries.split(',')]
+                if location['country'] not in target_countries:
+                    return False
+            
+            if advertisement.target_cities:
+                target_cities = [c.strip().lower() for c in advertisement.target_cities.split(',')]
+                if location['city'].lower() not in target_cities:
+                    return False
+
+        if advertisement.target_plays > 0:
+            current_plays = advertisement.playback_history.count()
+            if current_plays >= advertisement.target_plays:
+                return False
+
+        if advertisement.target_listeners > 0:
+            from analytics.models import Listener
+            playbacks = advertisement.playback_history.all()
+            unique_ips = set()
+            for p in playbacks:
+                listeners = Listener.objects.filter(
+                    station=advertisement.station,
+                    timestamp_start__lt=p.timestamp_end or timezone.now(),
+                    timestamp_end__gt=p.timestamp_start
+                ).values_list('listener_ip', flat=True)
+                unique_ips.update(listeners)
+            
+            if len(unique_ips) >= advertisement.target_listeners:
+                return False
+
+        schedule_items = advertisement.schedule_items.all()
+        if schedule_items.exists():
+            station_tz = pytz.timezone(advertisement.station.timezone or 'UTC')
+            local_now = now.astimezone(station_tz)
+            
+            is_scheduled = False
+            for item in schedule_items:
+                if self.should_schedule_play_now(item, local_now):
+                    is_scheduled = True
+                    break
+            
+            if not is_scheduled:
+                return False
+
+        if not advertisement.last_played_at:
+            return True
+            
+        diff = now - advertisement.last_played_at
+        return diff.total_seconds() >= (advertisement.play_interval * 60)
+
     def should_playlist_play_now(self, playlist: StationPlaylist, now: datetime.datetime = None) -> bool:
         if now is None:
             now = timezone.now()
@@ -59,7 +121,6 @@ class Scheduler:
             return False
             
         if schedule.days:
-            # Django isoweekday: 1 (Mon) - 7 (Sun)
             day_of_week = str(now.isoweekday())
             if day_of_week not in schedule.days.split(','):
                 return False

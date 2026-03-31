@@ -9,7 +9,6 @@ import {
   Users, 
   Activity, 
   Zap, 
-  Share2, 
   Music,
   ExternalLink,
   RefreshCw,
@@ -17,7 +16,6 @@ import {
   Calendar,
   Mic
 } from 'lucide-react';
-import Card from '../../../components/ui/Card';
 import Button from '../../../components/ui/Button';
 
 interface StationProfileData {
@@ -38,6 +36,8 @@ interface StationProfileData {
     };
     elapsed: number;
     duration: number;
+    listeners: number;
+    bitrate: number;
   };
   schedule: any[];
 }
@@ -154,11 +154,11 @@ const StationProfile: React.FC = () => {
                   <div className="d-flex align-items-center gap-4 ms-2">
                     <div className="text-center">
                       <p className="text-muted-soft smaller text-uppercase fw-700 ls-1 mb-0">Auditeurs</p>
-                      <p className="text-main fw-800 mb-0">124</p>
+                      <p className="text-main fw-800 mb-0">{station.now_playing?.listeners || 0}</p>
                     </div>
                     <div className="text-center">
                       <p className="text-muted-soft smaller text-uppercase fw-700 ls-1 mb-0">Qualité</p>
-                      <p className="text-main fw-800 mb-0">320kbps</p>
+                      <p className="text-main fw-800 mb-0">{station.now_playing?.bitrate || 128}kbps</p>
                     </div>
                   </div>
                 </div>
@@ -214,7 +214,7 @@ const StationProfile: React.FC = () => {
               <h5 className="fw-800 text-main mb-0 d-flex align-items-center gap-2">
                 <Calendar size={20} className="text-primary" /> Planning
               </h5>
-              <Button variant="link" size="sm" className="p-0 text-primary fw-700">Voir tout</Button>
+              <Button variant="link" size="sm" className="p-0 text-primary fw-700" as={Link} to={`/station/${station.short_name}/schedule`}>Voir tout</Button>
             </div>
 
             <div className="d-flex flex-column gap-3">
@@ -242,13 +242,23 @@ const StationProfile: React.FC = () => {
               <h5 className="fw-800 text-main mb-4">Actions Rapides</h5>
               <div className="row g-2">
                 <div className="col-6">
-                  <Link to={`/station/${station.short_name}/media`} className="btn btn-light w-100 py-3 rounded-3 border-0 bg-light-soft text-main fw-700 small">
+                  <Link to={`/station/${station.short_name}/media`} className="btn btn-light-soft w-100 py-3 rounded-3 text-main fw-700 small shadow-none border-0">
                     <Music size={18} className="d-block mx-auto mb-2 text-primary" /> Médias
                   </Link>
                 </div>
                 <div className="col-6">
-                  <Link to={`/station/${station.short_name}/playlists`} className="btn btn-light w-100 py-3 rounded-3 border-0 bg-light-soft text-main fw-700 small">
+                  <Link to={`/station/${station.short_name}/playlists`} className="btn btn-light-soft w-100 py-3 rounded-3 text-main fw-700 small shadow-none border-0">
                     <Zap size={18} className="d-block mx-auto mb-2 text-warning" /> Playlists
+                  </Link>
+                </div>
+                <div className="col-6">
+                  <Link to={`/station/${station.short_name}/streamers`} className="btn btn-light-soft w-100 py-3 rounded-3 text-main fw-700 small shadow-none border-0">
+                    <Users size={18} className="d-block mx-auto mb-2 text-info" /> Streamers
+                  </Link>
+                </div>
+                <div className="col-6">
+                  <Link to={`/station/${station.short_name}/mounts`} className="btn btn-light-soft w-100 py-3 rounded-3 text-main fw-700 small shadow-none border-0">
+                    <ExternalLink size={18} className="d-block mx-auto mb-2 text-danger" /> Points de montage
                   </Link>
                 </div>
               </div>

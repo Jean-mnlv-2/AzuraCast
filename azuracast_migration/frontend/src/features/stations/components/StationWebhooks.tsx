@@ -136,14 +136,14 @@ const StationWebhooks: React.FC = () => {
             <tbody>
               {webhooks?.map((webhook) => (
                 <tr key={webhook.id}>
-                  <td className="ps-4 py-3">
-                    <div className="d-flex align-items-center">
-                      <div className="bg-light-soft p-2 rounded-3 me-3">
+                  <td className="ps-4">
+                    <div className="d-flex align-items-center gap-3">
+                      <div className="bg-light-soft p-2 rounded-3">
                         {getWebhookIcon(webhook.type)}
                       </div>
                       <div>
-                        <div className="fw-bold text-main">{webhook.name || webhook.type}</div>
-                        <div className="small text-muted text-capitalize">{webhook.type}</div>
+                        <h6 className="fw-700 text-main mb-0">{webhook.name}</h6>
+                        <span className="smaller text-muted-soft fw-600 text-uppercase ls-1">{webhook.type}</span>
                       </div>
                     </div>
                   </td>
@@ -156,8 +156,8 @@ const StationWebhooks: React.FC = () => {
                       ))}
                     </div>
                   </td>
-                  <td className="py-3">
-                    <div className="form-check form-switch custom-switch">
+                  <td className="py-3 text-center">
+                    <div className="form-check form-switch d-flex justify-content-center">
                       <input
                         className="form-check-input"
                         type="checkbox"

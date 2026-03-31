@@ -6,7 +6,7 @@ from typing import List, Optional
 
 from django.utils import timezone
 from django.db.models import Q
-from stations.models import Station, StationPlaylist
+from stations.models import Station, StationPlaylist, StationAdvertisement
 from media.models import StationMedia, Song
 from .models import StationQueue, StationRequest
 from .scheduler import Scheduler
@@ -37,9 +37,20 @@ class QueueBuilder:
                 station=station,
                 played_at__isnull=True
             ).order_by('timestamp').first()
-        
-        if next_request:
-            return self.create_queue_from_request(next_request)
+            
+            if next_request:
+                return self.create_queue_from_request(next_request)
+
+        # 1.5. Check for advertisements
+        if not is_interrupting:
+            ads = StationAdvertisement.objects.filter(station=station, is_active=True)
+            for ad in ads:
+                if self.scheduler.should_advertisement_play_now(ad, expected_play_time):
+                    logger.info(f"Selected advertisement '{ad.name}' for station {station.name}")
+                    queue_item = self.create_queue_from_advertisement(station, ad)
+                    ad.last_played_at = expected_play_time
+                    ad.save()
+                    return queue_item
             
         # 2. Get recently played song history for duplicate prevention
         history_minutes = station.backend_config.get('duplicate_prevention_time_range', 15) if station.backend_config else 15
@@ -56,7 +67,7 @@ class QueueBuilder:
             'once_per_hour',
             'once_per_x_songs',
             'once_per_x_minutes',
-            'default', # Standard
+            'default',
         ]
 
         for playlist_type in playlist_types_by_priority:
@@ -120,7 +131,6 @@ class QueueBuilder:
             return None
 
         if playlist.playback_order == 'random':
-            # Try random selection
             media_list = list(media_items)
             random.shuffle(media_list)
             for media in media_list:
@@ -184,6 +194,25 @@ class QueueBuilder:
             album=media.album,
             duration=media.length,
             is_visible=not playlist.is_jingle
+        )
+
+    def create_queue_from_advertisement(self, station: Station, ad: StationAdvertisement) -> StationQueue:
+        uri = ""
+        if ad.audio_file:
+            uri = ad.audio_file.url
+        elif ad.media_path:
+            uri = f"media/{ad.media_path}"
+        elif ad.media_url:
+            uri = ad.media_url
+            
+        return StationQueue.objects.create(
+            station=station,
+            advertisement=ad,
+            title=ad.name,
+            artist="Publicité",
+            autodj_custom_uri=uri,
+            duration=0,
+            is_visible=False
         )
 
     def create_queue_from_remote_url(self, station: Station, playlist: StationPlaylist) -> StationQueue:

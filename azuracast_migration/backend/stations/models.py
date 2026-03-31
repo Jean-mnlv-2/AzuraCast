@@ -1,9 +1,21 @@
 from django.db import models
+from django.conf import settings
 
 class Station(models.Model):
     name = models.CharField(max_length=100)
     short_name = models.SlugField(max_length=100, unique=True)
     is_enabled = models.BooleanField(default=True)
+    
+    logo = models.ImageField(upload_to='station_logos/', null=True, blank=True)
+    logo_external_url = models.URLField(max_length=512, null=True, blank=True)
+    
+    creator = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='created_stations'
+    )
     
     FRONTEND_CHOICES = [
         ('icecast', 'Icecast'),
@@ -22,8 +34,12 @@ class Station(models.Model):
     backend_config = models.JSONField(null=True, blank=True)
     
     description = models.TextField(null=True, blank=True)
-    url = models.URLField(max_length=255, null=True, blank=True)
-    genre = models.CharField(max_length=255, null=True, blank=True)
+    url = models.URLField(max_length=255, null=True, blank=True) # Site web
+    stream_url = models.URLField(max_length=512, null=True, blank=True) # URL du flux (streaming)
+    genre = models.CharField(max_length=255, null=True, blank=True) # Catégorie
+    language = models.CharField(max_length=100, default='fr', null=True, blank=True)
+    country = models.CharField(max_length=100, default='Cameroun', null=True, blank=True)
+    
     radio_base_dir = models.CharField(max_length=255, null=True, blank=True)
     
     enable_requests = models.BooleanField(default=False)
@@ -74,6 +90,15 @@ class Station(models.Model):
     needs_restart = models.BooleanField(default=False)
     has_started = models.BooleanField(default=False)
     
+    # Subscription / Plan
+    PLAN_CHOICES = [
+        ('free', 'Gratuit'),
+        ('pro', 'Pro'),
+        ('business', 'Business'),
+        ('enterprise', 'Enterprise'),
+    ]
+    plan = models.CharField(max_length=50, choices=PLAN_CHOICES, default='free')
+    
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -82,7 +107,10 @@ class Station(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.radio_base_dir:
-            self.radio_base_dir = f'/var/azuracast/stations/{self.short_name}'
+            import os
+            from django.conf import settings
+            base = getattr(settings, 'MEDIA_ROOT', '/app/media')
+            self.radio_base_dir = os.path.join(base, 'stations', self.short_name)
         super().save(*args, **kwargs)
 
     class Meta:
@@ -206,6 +234,13 @@ class StationAdvertisement(models.Model):
     is_active = models.BooleanField(default=True)
     play_interval = models.SmallIntegerField(default=0, help_text="Play every X minutes (0 to disable)")
     
+    target_plays = models.IntegerField(default=0, help_text="Total plays objective for the campaign")
+    target_listeners = models.IntegerField(default=0, help_text="Total unique listeners objective for the campaign")
+    
+    target_countries = models.CharField(max_length=255, null=True, blank=True, help_text="Comma-separated ISO country codes (ex: CM,FR)")
+    target_cities = models.CharField(max_length=500, null=True, blank=True, help_text="Comma-separated city names")
+    
+    last_played_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

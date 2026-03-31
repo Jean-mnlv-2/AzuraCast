@@ -41,6 +41,7 @@ class LiquidsoapConfigWriter:
     def write_header(self):
         config_dir = os.path.join(self.station.radio_base_dir, 'config')
         pidfile = os.path.join(config_dir, 'liquidsoap.pid')
+        logfile = os.path.join(config_dir, 'liquidsoap.log')
         
         # Ports and API settings
         backend_config = self.station.backend_config or {}
@@ -60,6 +61,7 @@ class LiquidsoapConfigWriter:
 %include "{common_lib_path}"
 
 log.level := {log_level}
+log.file.path := "{logfile}"
 init.daemon.pidfile.path := "{pidfile}"
 
 settings.init.compact_before_start := true
@@ -83,6 +85,7 @@ azuracast.start_http_api()
 """)
 
     def write_playlists(self):
+        internal_token = quote(str(getattr(settings, 'INTERNAL_DJ_AUTH_TOKEN', '') or ''), safe='')
         self.append_block(f"""
 # Playlists Configuration
 def get_next_song() =
@@ -98,9 +101,14 @@ def get_next_song() =
         ("title", data["song"]["title"]),
         ("artist", data["song"]["artist"]),
         ("album", data["song"]["album"]),
-        ("song_id", data["song"]["song_id"]),
+        ("song_id", string_of(data["song"]["id"])),
         ("duration", string_of(data["duration"]))
     ]
+    
+    # Ad-specific metadata
+    if data["advertisement"] != null then
+        metadata = list.add(("ad_id", string_of(data["advertisement"])), metadata)
+    end
     
     # Add optional cue points and amplify if they exist
     if data["liq_amplify"] != null then
@@ -123,6 +131,23 @@ def get_next_song() =
 end
 
 radio = request.dynamic(id="azuracast_next_song", get_next_song)
+
+# Ad Playback Tracking
+def on_ad_event(m, event) =
+    ad_id = m["ad_id"]
+    if ad_id != "" then
+        ignore(http.post("http://backend:8000/api/internal/playback?internal_token={internal_token}", 
+            headers=[("Content-Type", "application/json")],
+            data=json.stringify({{
+                "station_id": {self.station.id},
+                "event": event,
+                "ad_id": int_of_string(ad_id)
+            }})))
+    end
+end
+
+radio.on_track(fun(m) -> on_ad_event(m, "start"))
+radio.on_stop(fun(m) -> on_ad_event(m, "end"))
 """)
 
     def write_crossfade(self):
@@ -141,6 +166,11 @@ radio = azuracast.apply_crossfade(radio)
         backend_config = self.station.backend_config or {}
         harbor_port = backend_config.get('harbor_port', 8000 + ((self.station.id - 1) * 10) + 5)
         internal_token = quote(str(getattr(settings, 'INTERNAL_DJ_AUTH_TOKEN', '') or ''), safe='')
+        
+        fallback_path = self.station.fallback_path or "/usr/local/share/icecast/web/error.mp3"
+        
+        recording_dir = os.path.join(self.station.radio_base_dir, 'recordings')
+        
         self.append_block(f"""
 def dj_auth(user, password) =
     # Call the Django API for DJ authentication
@@ -152,8 +182,46 @@ end
 # Harbor (Live DJ) Configuration
 input_streamer = input.harbor("/", port={harbor_port}, auth=dj_auth)
 
-# Switch between AutoDJ and Live DJ
-radio = fallback(track_sensitive=false, [input_streamer, radio])
+# Auto-Ducking Logic
+# When the DJ speaks, the music volume drops to 20%
+# We use smooth_add to mix the DJ with the Radio
+def mix_with_ducking(dj, music) =
+  # Detect silence/sound on the DJ input
+  # If DJ is active, music is lowered
+  smooth_add(delay=0.5, p=0.2, normal=music, special=dj)
+end
+
+# Hierarchical Fallback: Live > Playlist > Safe File
+# 1. Live DJ (with auto-ducking if needed, but here we use simple fallback for priority)
+# 2. Radio (AutoDJ)
+# 3. Safe File (Jingle)
+safe_file = single("{fallback_path}")
+
+# We wrap the DJ input with the music in a ducking mix
+# But we only do this when the DJ is actually connected
+radio = fallback(track_sensitive=false, [
+  mix_with_ducking(input_streamer, radio),
+  radio,
+  safe_file
+])
+
+# Auto-Recording of Live Sessions
+# Every time a DJ connects, we record the stream
+def start_recording(m) =
+    # Create directory if it doesn't exist
+    system("mkdir -p {recording_dir}")
+    # Filename with timestamp
+    timestamp = list.assoc("start_time", m)
+    filename = "{recording_dir}/live_#{{timestamp}}.mp3"
+    log("Starting recording to #{{filename}}")
+end
+
+# Record the input_streamer source when it's active
+output.file(%mp3(bitrate=192), 
+            fallible=true,
+            on_start=start_recording,
+            "{recording_dir}/live_%Y%m%d_%H%M%S.mp3", 
+            input_streamer)
 """)
 
     def write_processing(self):
@@ -201,12 +269,18 @@ output.icecast({format_str},
     def write_hls(self):
         hls_dir = os.path.join(self.station.radio_base_dir, 'hls')
         self.append_block(f"""
-# HLS Configuration
-output.file.hls(playlist="live.m3u8",
-    segment_duration=2.0,
+# Adaptive HLS Configuration (AAC+ Multi-bitrate)
+output.file.hls(
+    playlist="live.m3u8",
+    segment_duration=2.0, # 2s segments for low latency
     segments=5,
+    segments_overhead=3,
     "{hls_dir}",
-    [("mp3", %mp3(bitrate=128))],
+    [
+        ("low", %fdkaac(bitrate=32, sbr=true)),
+        ("mid", %fdkaac(bitrate=64, sbr=true)),
+        ("high", %fdkaac(bitrate=128))
+    ],
     radio
 )
 """)

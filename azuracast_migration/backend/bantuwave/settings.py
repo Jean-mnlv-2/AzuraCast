@@ -80,7 +80,7 @@ ROOT_URLCONF = 'bantuwave.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [BASE_DIR / 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -153,6 +153,18 @@ REST_FRAMEWORK = {
     ],
 }
 
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'BantuWave API',
+    'DESCRIPTION': 'Plateforme de diffusion radio (Migration AzuraCast)',
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
+    'SWAGGER_UI_SETTINGS': {
+        'deepLinking': True,
+        'persistAuthorization': True,
+        'displayOperationId': True,
+    },
+}
+
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
@@ -182,13 +194,30 @@ CSRF_TRUSTED_ORIGINS = config(
 )
 
 INTERNAL_DJ_AUTH_TOKEN = config('INTERNAL_DJ_AUTH_TOKEN', default='')
+INTERNAL_SERVICES_ALLOWED_IPS = config('INTERNAL_SERVICES_ALLOWED_IPS', default='', cast=Csv())
+
+# Email Settings
+EMAIL_BACKEND = config('EMAIL_BACKEND', default='django.core.mail.backends.smtp.EmailBackend')
+EMAIL_HOST = config('EMAIL_HOST', default='localhost')
+EMAIL_PORT = config('EMAIL_PORT', default=25, cast=int)
+EMAIL_USE_TLS = config('EMAIL_USE_TLS', default=False, cast=bool)
+EMAIL_USE_SSL = config('EMAIL_USE_SSL', default=False, cast=bool)
+EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='')
+EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
+DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='noreply@bantuwave.com')
 
 if not DEBUG:
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
     SECURE_BROWSER_XSS_FILTER = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    SECURE_HSTS_SECONDS = 31536000
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
     X_FRAME_OPTIONS = 'DENY'
+    USE_X_FORWARDED_HOST = True
+    USE_X_FORWARDED_PORT = True
 
 # Celery
 CELERY_BROKER_URL = config('CELERY_BROKER_URL', default='redis://localhost:6379/0')
@@ -199,6 +228,10 @@ CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = TIME_ZONE
 
 CELERY_BEAT_SCHEDULE = {
+    'scan-advertisement-logs': {
+        'task': 'analytics.tasks.scan_advertisement_logs',
+        'schedule': timedelta(minutes=5),
+    },
     'aggregate-analytics-daily': {
         'task': 'analytics.tasks.aggregate_analytics_daily',
         'schedule': timedelta(days=1),
@@ -206,6 +239,10 @@ CELERY_BEAT_SCHEDULE = {
     'aggregate-analytics-hourly': {
         'task': 'analytics.tasks.aggregate_analytics_hourly',
         'schedule': timedelta(hours=1),
+    },
+    'send-weekly-audience-reports': {
+        'task': 'analytics.tasks.send_weekly_audience_reports',
+        'schedule': timedelta(days=7), # Could be more specific like crontab
     },
 }
 

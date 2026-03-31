@@ -19,6 +19,19 @@ class UserManager(BaseUserManager):
 class User(AbstractBaseUser, PermissionsMixin):
     email = models.EmailField(unique=True, max_length=100)
     name = models.CharField(max_length=100, null=True, blank=True)
+    phone = models.CharField(max_length=50, null=True, blank=True)
+    
+    TYPE_CHOICES = [
+        ('individual', 'Particulier'),
+        ('organization', 'Organisation'),
+    ]
+    account_type = models.CharField(max_length=20, choices=TYPE_CHOICES, default='individual')
+    
+    organization_name = models.CharField(max_length=255, null=True, blank=True)
+    structure_type = models.CharField(max_length=100, null=True, blank=True) # ex: Entreprise privée
+    address = models.TextField(null=True, blank=True)
+    country = models.CharField(max_length=100, null=True, blank=True)
+    
     locale = models.CharField(max_length=25, null=True, blank=True)
     show_24_hour_time = models.BooleanField(default=True)
     two_factor_secret = models.CharField(max_length=255, null=True, blank=True)

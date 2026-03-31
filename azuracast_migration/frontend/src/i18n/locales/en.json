@@ -31,7 +31,11 @@
     "mounts": "Mount Points",
     "remotes": "Remote Relays",
     "hls_streams": "HLS Streams",
-    "sftp_users": "SFTP Users"
+    "sftp_users": "SFTP Users",
+    "podcasts": "Podcasts",
+    "all_stations": "Global Stations",
+    "overview": "Overview",
+    "documentation": "Documentation"
   },
   "login": {
     "title": "Login",
@@ -40,8 +44,22 @@
     "remember_me": "Remember me",
     "forgot_password": "Forgot password?",
     "submit": "Log In",
+    "register_link": "No account? Sign up",
     "error_invalid": "Invalid credentials. Please try again.",
     "error_generic": "An error occurred during login."
+  },
+  "register": {
+    "title": "Sign Up",
+    "subtitle": "Join BantuWave and create your own radio station.",
+    "email": "Email Address",
+    "password": "Password",
+    "confirm_password": "Confirm Password",
+    "name": "Full Name",
+    "submit": "Create my account",
+    "login_link": "Already registered? Log in",
+    "success": "Registration successful! You can now log in.",
+    "error_mismatch": "Passwords do not match.",
+    "error_generic": "An error occurred during registration."
   },
   "stations": {
     "title": "Radio Stations",
@@ -278,6 +296,20 @@
     },
     "no_data": "No webhooks configured",
     "no_data_desc": "Connect your BantuWave radio to Discord, Telegram or other services.",
-    "delete_confirm": "Are you sure you want to delete this webhook?"
+    "delete_confirm": "Are you sure you want to delete this webhook ?"
+  },
+  "podcasts": {
+    "title": "Podcasts",
+    "new": "New Podcast",
+    "episodes_count_one": "{{count}} episode",
+    "episodes_count_other": "{{count}} episodes",
+    "no_podcasts": "No podcasts found",
+    "rss_feed": "RSS Feed",
+    "copy_rss": "Copy RSS Feed",
+    "modal": {
+      "title": "New podcast",
+      "name": "Title",
+      "description": "Description"
+    }
   }
 }

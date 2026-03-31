@@ -4,7 +4,7 @@ import Modal from '../../../components/ui/Modal';
 import Button from '../../../components/ui/Button';
 import Input from '../../../components/ui/Input';
 import Select from '../../../components/ui/Select';
-import { Save, Info, ListMusic, Clock, Settings2, Calendar } from 'lucide-react';
+import { Save, Info, ListMusic, Clock, Settings2, Calendar, Plus } from 'lucide-react';
 
 interface PlaylistEditModalProps {
   isOpen: boolean;
@@ -24,6 +24,7 @@ const PlaylistEditModal: React.FC<PlaylistEditModalProps> = ({
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState('basic');
   const [formData, setFormData] = useState<any>({});
+  const [schedules, setSchedules] = useState<any[]>([]);
 
   useEffect(() => {
     if (playlist) {
@@ -41,6 +42,7 @@ const PlaylistEditModal: React.FC<PlaylistEditModalProps> = ({
         include_in_requests: playlist.include_in_requests !== undefined ? playlist.include_in_requests : true,
         is_jingle: playlist.is_jingle !== undefined ? playlist.is_jingle : false,
       });
+      setSchedules(playlist.schedule_items || []);
     } else {
       setFormData({
         name: '',
@@ -56,18 +58,40 @@ const PlaylistEditModal: React.FC<PlaylistEditModalProps> = ({
         include_in_requests: true,
         is_jingle: false,
       });
+      setSchedules([]);
     }
   }, [playlist, isOpen]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    const { name, value, type } = e.target as any;
-    const val = type === 'checkbox' ? (e.target as HTMLInputElement).checked : value;
-    setFormData((prev: any) => ({ ...prev, [name]: val }));
+  const addSchedule = (e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+    }
+    setSchedules([...schedules, { start_time: 900, end_time: 1700, days: '1,2,3,4,5' }]);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const removeSchedule = (index: number, e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    setSchedules(schedules.filter((_, i) => i !== index));
+  };
+
+  const updateSchedule = (index: number, field: string, value: any) => {
+     const newSchedules = [...schedules];
+     newSchedules[index] = { ...newSchedules[index], [field]: value };
+     setSchedules(newSchedules);
+   };
+
+   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+     const { name, value, type } = e.target as any;
+     const val = type === 'checkbox' ? (e.target as HTMLInputElement).checked : value;
+     setFormData((prev: any) => ({ ...prev, [name]: val }));
+   };
+ 
+   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSave(formData);
+    onSave({ ...formData, schedule_items: schedules });
   };
 
   const typeOptions = [
@@ -124,6 +148,14 @@ const PlaylistEditModal: React.FC<PlaylistEditModalProps> = ({
             onClick={() => setActiveTab('advanced')}
           >
             <Settings2 size={16} /> Avancé
+          </button>
+        </li>
+        <li className="nav-item flex-grow-1">
+          <button 
+            className={`nav-link border-0 w-100 rounded-2 py-2 small fw-bold d-flex align-items-center justify-content-center gap-2 ${activeTab === 'schedule' ? 'bg-white shadow-sm text-danger active' : 'text-muted'}`}
+            onClick={() => setActiveTab('schedule')}
+          >
+            <Calendar size={16} /> Horaires
           </button>
         </li>
       </ul>
@@ -200,6 +232,67 @@ const PlaylistEditModal: React.FC<PlaylistEditModalProps> = ({
                 <label className="form-check-label" htmlFor="is_jingle">Mode Jingle (masquer métadonnées)</label>
               </div>
             </div>
+          </div>
+        )}
+
+        {activeTab === 'schedule' && (
+          <div className="d-flex flex-column gap-3">
+            <div className="d-flex justify-content-between align-items-center mb-2">
+              <div>
+                <h6 className="fw-bold text-main mb-0">Horaires de diffusion</h6>
+                <p className="smaller text-muted-soft mb-0">Définissez quand cette playlist doit être diffusée.</p>
+              </div>
+              <Button type="button" variant="outline-primary" size="sm" icon={<Plus size={16} />} onClick={(e) => addSchedule(e)}>
+                Ajouter un horaire
+              </Button>
+            </div>
+
+            {schedules.length === 0 ? (
+              <div className="text-center py-4 bg-light-soft rounded-3 border border-dashed">
+                <Calendar size={32} className="text-muted-soft opacity-25 mb-2" />
+                <p className="small text-muted-soft mb-0">Aucun horaire spécifique défini. La playlist suivra les règles générales.</p>
+              </div>
+            ) : (
+              schedules.map((sch, index) => (
+                <div key={index} className="bg-light-soft p-3 rounded-3 border position-relative">
+                  <button 
+                    type="button" 
+                    className="btn-close position-absolute top-0 end-0 m-2" 
+                    style={{ fontSize: '0.7rem' }}
+                    onClick={(e) => removeSchedule(index, e)}
+                  ></button>
+                  <div className="row g-3">
+                    <div className="col-md-6">
+                      <Input 
+                        label="Heure de début (HHMM)" 
+                        type="number" 
+                        value={sch.start_time} 
+                        onChange={(e) => updateSchedule(index, 'start_time', parseInt(e.target.value))}
+                        placeholder="0900"
+                      />
+                    </div>
+                    <div className="col-md-6">
+                      <Input 
+                        label="Heure de fin (HHMM)" 
+                        type="number" 
+                        value={sch.end_time} 
+                        onChange={(e) => updateSchedule(index, 'end_time', parseInt(e.target.value))}
+                        placeholder="1700"
+                      />
+                    </div>
+                    <div className="col-12">
+                      <Input 
+                        label="Jours de la semaine (1=Lun, 7=Dim)" 
+                        value={sch.days} 
+                        onChange={(e) => updateSchedule(index, 'days', e.target.value)}
+                        placeholder="1,2,3,4,5"
+                      />
+                      <div className="form-text smaller">Séparez les jours par des virgules (ex: 1,2,3 pour Lun, Mar, Mer).</div>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         )}
       </form>

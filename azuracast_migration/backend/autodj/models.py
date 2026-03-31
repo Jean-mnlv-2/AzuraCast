@@ -1,11 +1,12 @@
 from django.db import models
-from stations.models import Station, StationPlaylist
+from stations.models import Station, StationPlaylist, StationAdvertisement
 from media.models import Song, StationMedia
 
 class StationQueue(models.Model):
     station = models.ForeignKey(Station, on_delete=models.CASCADE, related_name='queue_items')
     playlist = models.ForeignKey(StationPlaylist, on_delete=models.SET_NULL, null=True, blank=True)
     media = models.ForeignKey(StationMedia, on_delete=models.SET_NULL, null=True, blank=True)
+    advertisement = models.ForeignKey(StationAdvertisement, on_delete=models.SET_NULL, null=True, blank=True)
     request = models.ForeignKey('StationRequest', on_delete=models.SET_NULL, null=True, blank=True)
     
     title = models.CharField(max_length=150, null=True, blank=True)

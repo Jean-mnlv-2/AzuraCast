@@ -29,3 +29,4 @@ django-prometheus
 docker
 pytz
 asgiref
+psutil

@@ -92,17 +92,64 @@ class StationStreamerSerializer(serializers.ModelSerializer):
 class StationAdvertisementSerializer(serializers.ModelSerializer):
     schedule_items = StationScheduleSerializer(many=True, required=False)
     station = serializers.PrimaryKeyRelatedField(read_only=True)
+    
+    playback_count = serializers.SerializerMethodField()
+    playback_count_24h = serializers.SerializerMethodField()
+    unique_listeners = serializers.SerializerMethodField()
+    plays_progress_percentage = serializers.SerializerMethodField()
+    listeners_progress_percentage = serializers.SerializerMethodField()
 
     class Meta:
         model = StationAdvertisement
         fields = '__all__'
         read_only_fields = ('created_at', 'updated_at', 'station')
 
+    def get_plays_progress_percentage(self, obj):
+        if obj.target_plays <= 0:
+            return 100
+        count = obj.playback_history.count()
+        return round((count / obj.target_plays) * 100, 1)
+
+    def get_listeners_progress_percentage(self, obj):
+        if obj.target_listeners <= 0:
+            return 100
+        count = self.get_unique_listeners(obj)
+        return round((count / obj.target_listeners) * 100, 1)
+
+    def get_playback_count(self, obj):
+        return obj.playback_history.count()
+
+    def get_playback_count_24h(self, obj):
+        from django.utils import timezone
+        from datetime import timedelta
+        yesterday = timezone.now() - timedelta(days=1)
+        return obj.playback_history.filter(timestamp_start__gte=yesterday).count()
+
+    def get_unique_listeners(self, obj):
+        from analytics.models import Listener
+        from django.utils import timezone
+        
+        playbacks = obj.playback_history.all()
+        unique_ips = set()
+        
+        for p in playbacks:
+            listeners = Listener.objects.filter(
+                station=obj.station,
+                timestamp_start__lt=p.timestamp_end or timezone.now(),
+                timestamp_end__gt=p.timestamp_start
+            ).values_list('listener_ip', flat=True)
+            unique_ips.update(listeners)
+            
+        return len(unique_ips)
+
     def to_internal_value(self, data):
         if 'schedule_items' in data and isinstance(data['schedule_items'], str):
             import json
             try:
-                mutable_data = data.dict()
+                if hasattr(data, 'dict'):
+                    mutable_data = data.dict()
+                else:
+                    mutable_data = dict(data)
                 mutable_data['schedule_items'] = json.loads(data['schedule_items'])
                 return super().to_internal_value(mutable_data)
             except (json.JSONDecodeError, AttributeError):
@@ -125,7 +172,10 @@ class StationAdvertisementSerializer(serializers.ModelSerializer):
                 StationSchedule.objects.create(advertisement=instance, station=instance.station, **schedule)
         return instance
 
+from users.serializers import UserSerializer
+
 class StationSerializer(serializers.ModelSerializer):
+    creator_details = UserSerializer(source='creator', read_only=True)
     playlists = StationPlaylistSerializer(many=True, read_only=True)
     streamers = StationStreamerSerializer(many=True, read_only=True)
     advertisements = StationAdvertisementSerializer(many=True, read_only=True)
@@ -141,5 +191,20 @@ class StationSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Station
-        fields = '__all__'
-        read_only_fields = ('created_at', 'updated_at')
+        fields = [
+            'id', 'name', 'short_name', 'is_enabled', 'logo', 'logo_external_url', 'creator', 'creator_details',
+            'frontend_type', 'frontend_config', 'backend_type', 'backend_config',
+            'description', 'url', 'stream_url', 'genre', 'language', 'country',
+            'radio_base_dir', 'enable_requests', 'request_delay', 'request_threshold',
+            'disconnect_deactivate_streamer', 'enable_streamers', 'is_streamer_live',
+            'enable_public_page', 'enable_public_api', 'enable_on_demand',
+            'enable_on_demand_download', 'enable_hls', 'api_history_items',
+            'timezone', 'max_bitrate', 'max_mounts', 'max_hls_streams',
+            'branding_config', 'ad_config', 'cdn_url', 'hls_cdn_url',
+            'adapter_api_key', 'fallback_path', 'media_storage_location',
+            'recordings_storage_location', 'podcasts_storage_location',
+            'backups_storage_location', 'needs_restart', 'has_started', 'plan',
+            'created_at', 'updated_at', 'playlists', 'streamers',
+            'advertisements', 'mounts', 'remotes', 'hls_streams', 'sftp_users'
+        ]
+        read_only_fields = ('created_at', 'updated_at', 'creator', 'has_started')

@@ -2,24 +2,27 @@ import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { 
-  Plus, 
-  Radio, 
-  Settings, 
-  Play, 
-  Square, 
+import {
+  Plus,
+  Radio,
+  Settings,
+  Play,
+  Square,
   RefreshCw, 
   MoreVertical,
   Music,
-  Users,
-  BarChart3,
-  ExternalLink
+  ExternalLink,
+  Globe,
+  Languages,
+  Activity,
+  Image as ImageIcon,
+  Link as LinkIcon
 } from 'lucide-react';
 import axios from '../../../api/axios';
 import Button from '../../../components/ui/Button';
-import Card from '../../../components/ui/Card';
 import Modal from '../../../components/ui/Modal';
 import Input from '../../../components/ui/Input';
+import CountrySelect from '../../../components/ui/CountrySelect';
 
 interface Station {
   id: number;
@@ -30,26 +33,58 @@ interface Station {
   backend_type: string;
   is_streamer_live: boolean;
   needs_restart: boolean;
+  logo: string | null;
+  logo_external_url: string | null;
 }
 
 const StationList: React.FC = () => {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
   
   const [formData, setFormData] = useState({
     name: '',
     short_name: '',
     backend_type: 'liquidsoap',
-    frontend_type: 'icecast'
+    frontend_type: 'icecast',
+    description: '',
+    url: '',
+    stream_url: '',
+    genre: '',
+    language: 'fr',
+    country: 'Cameroun',
+    logo_external_url: ''
   });
 
   const createMutation = useMutation({
-    mutationFn: (data: any) => axios.post('/stations/', data),
+    mutationFn: (data: any) => {
+      const isMultipart = data instanceof FormData;
+      return axios.post('/stations/', data, {
+        headers: {
+          'Content-Type': isMultipart ? 'multipart/form-data' : 'application/json'
+        }
+      });
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['stations'] });
       setIsCreateModalOpen(false);
-      setFormData({ name: '', short_name: '', backend_type: 'liquidsoap', frontend_type: 'icecast' });
+      setLogoFile(null);
+      setLogoPreview(null);
+      setFormData({ 
+        name: '', 
+        short_name: '', 
+        backend_type: 'liquidsoap', 
+        frontend_type: 'icecast',
+        description: '',
+        url: '',
+        stream_url: '',
+        genre: '',
+        language: 'fr',
+        country: 'Cameroun',
+        logo_external_url: ''
+      });
     },
     onError: (error: any) => {
       const msg = error.response?.data ? JSON.stringify(error.response.data) : error.message;
@@ -63,15 +98,37 @@ const StationList: React.FC = () => {
     
     const short_name = formData.short_name || formData.name.toLowerCase().replace(/ /g, '-').replace(/[^\w-]+/g, '');
     
-    const dataToSubmit = {
-      ...formData,
-      short_name
-    };
+    let dataToSubmit: any;
+    if (logoFile) {
+      dataToSubmit = new FormData();
+      Object.entries(formData).forEach(([key, value]) => {
+        dataToSubmit.append(key, value);
+      });
+      dataToSubmit.append('logo', logoFile);
+      dataToSubmit.set('short_name', short_name);
+    } else {
+      dataToSubmit = {
+        ...formData,
+        short_name
+      };
+    }
     
     try {
       await createMutation.mutateAsync(dataToSubmit);
     } catch (error) {
       console.error('Error creating station:', error);
+    }
+  };
+
+  const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setLogoFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setLogoPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
     }
   };
 
@@ -117,19 +174,27 @@ const StationList: React.FC = () => {
       </div>
 
       {isLoading ? (
-        <div className="text-center py-5">
-          <div className="spinner-border text-primary" role="status"></div>
-          <p className="mt-3 text-muted-soft">Chargement de vos stations...</p>
+        <div className="text-center py-5 my-5">
+          <div className="spinner-grow text-primary" role="status"></div>
+          <p className="mt-3 text-muted-soft fw-600">Chargement de vos stations...</p>
         </div>
-      ) : (
+      ) : stations && stations.length > 0 ? (
         <div className="row g-4">
-          {stations?.map((station) => (
+          {stations.map((station) => (
             <div key={station.id} className="col-12 col-xl-6">
               <div className="bw-section h-100 mb-0 d-flex flex-column">
                 <div className="d-flex justify-content-between align-items-start mb-4">
                   <div className="d-flex align-items-center gap-3">
-                    <div className="bg-primary-soft rounded-4 p-3 text-primary">
-                      <Radio size={32} />
+                    <div className="bg-primary-soft rounded-4 p-0 text-primary overflow-hidden d-flex align-items-center justify-content-center" style={{ width: '64px', height: '64px', minWidth: '64px' }}>
+                      {station.logo_external_url || station.logo ? (
+                        <img 
+                          src={station.logo_external_url || (station.logo?.startsWith('http') ? station.logo : `${import.meta.env.VITE_API_URL}${station.logo}`)} 
+                          alt={station.name} 
+                          className="w-100 h-100 object-fit-cover"
+                        />
+                      ) : (
+                        <Radio size={32} />
+                      )}
                     </div>
                     <div>
                       <h4 className="fw-700 text-main mb-1">{station.name}</h4>
@@ -207,62 +272,201 @@ const StationList: React.FC = () => {
             </div>
           ))}
         </div>
+      ) : (
+        <div className="text-center py-5 my-5 bg-white rounded-4 border border-dashed border-2 p-5">
+          <div className="bg-primary-soft rounded-circle d-inline-flex p-4 mb-4 text-primary">
+            <Radio size={48} />
+          </div>
+          <h3 className="fw-800 text-main mb-2">Aucune station trouvée</h3>
+          <p className="text-muted-soft mb-4 max-w-400 mx-auto">
+            Vous n'avez pas encore créé de station de radio. Commencez votre aventure radiophonique dès maintenant en créant votre première station.
+          </p>
+          <Button 
+            variant="danger" 
+            pill
+            icon={<Plus size={20} />} 
+            onClick={() => setIsCreateModalOpen(true)}
+            className="shadow-sm px-4"
+          >
+            Créer ma première station
+          </Button>
+        </div>
       )}
 
-      {/* Modal de création */}
       <Modal 
         isOpen={isCreateModalOpen} 
         onClose={() => setIsCreateModalOpen(false)} 
-        title="Nouvelle Station BantuWave"
+        title={t('stations.create_modal.title')}
+        size="lg"
       >
-        <form onSubmit={handleCreateSubmit}>
-          <Input 
-            label="Nom de la Station" 
-            placeholder="ex: Ma Radio Live"
-            value={formData.name}
-            onChange={e => setFormData({...formData, name: e.target.value})}
-            required
-          />
-          <Input 
-            label="Identifiant URL (Optionnel)" 
-            placeholder="ex: ma-radio-live"
-            value={formData.short_name}
-            onChange={e => setFormData({...formData, short_name: e.target.value})}
-            helperText="Sera généré automatiquement si vide."
-          />
-          
-          <div className="row">
-            <div className="col-6">
-              <div className="mb-4">
-                <label className="form-label fw-700 text-main small text-uppercase ls-1 mb-2">Moteur Audio</label>
-                <select 
-                  className="form-select"
-                  value={formData.backend_type}
-                  onChange={e => setFormData({...formData, backend_type: e.target.value})}
-                >
-                  <option value="liquidsoap">Liquidsoap</option>
-                  <option value="none">Aucun</option>
-                </select>
+        <form onSubmit={handleCreateSubmit} className="d-flex flex-column gap-4">
+          <div className="row g-4">
+            {/* Section 1: Informations de base */}
+            <div className="col-12">
+              <div className="d-flex align-items-center gap-2 mb-3 pb-2 border-bottom">
+                <Radio size={20} className="text-primary" />
+                <h5 className="fw-800 text-main mb-0">Informations sur la radio</h5>
+              </div>
+              
+              <div className="row g-3 mb-4">
+                <div className="col-12">
+                  <label className="form-label fw-700 text-main small text-uppercase ls-1 mb-3">Logo de la radio</label>
+                  <div className="d-flex flex-column flex-md-row gap-4 align-items-start">
+                    <div 
+                      className="bg-light-soft rounded-4 d-flex align-items-center justify-content-center overflow-hidden border-2 border-dashed border-muted-soft position-relative hover-bg-light transition-all cursor-pointer" 
+                      style={{ width: '120px', height: '120px', minWidth: '120px' }}
+                      onClick={() => document.getElementById('logo-upload')?.click()}
+                    >
+                      {logoPreview ? (
+                        <img src={logoPreview} alt="Preview" className="w-100 h-100 object-fit-cover" />
+                      ) : (
+                        <div className="text-center p-3">
+                          <ImageIcon size={24} className="text-muted-soft mb-1" />
+                          <div className="smaller text-muted-soft fw-600">Upload</div>
+                        </div>
+                      )}
+                      <input 
+                        id="logo-upload" 
+                        type="file" 
+                        accept="image/*" 
+                        className="d-none" 
+                        onChange={handleLogoChange} 
+                      />
+                    </div>
+                    
+                    <div className="flex-grow-1 w-100">
+                      <Input 
+                        label="Ou lien vers le logo (URL)" 
+                        placeholder="https://exemple.com/logo.png"
+                        value={formData.logo_external_url}
+                        onChange={e => setFormData({...formData, logo_external_url: e.target.value})}
+                        icon={<LinkIcon size={16} className="text-muted-soft" />}
+                        helperText="Si vous utilisez un lien externe, il sera privilégié sur l'upload local."
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="row g-3">
+                <div className="col-md-6">
+                  <Input 
+                    label={t('stations.create_modal.name')} 
+                    placeholder="ex: MNLV Radio"
+                    value={formData.name}
+                    onChange={e => setFormData({...formData, name: e.target.value})}
+                    required
+                    icon={<Radio size={16} className="text-muted-soft" />}
+                  />
+                </div>
+                <div className="col-md-6">
+                  <Input 
+                    label={t('stations.create_modal.slug')} 
+                    placeholder="ex: mnlv-radio"
+                    value={formData.short_name}
+                    onChange={e => setFormData({...formData, short_name: e.target.value})}
+                    helperText={t('stations.create_modal.slug_help')}
+                    icon={<Globe size={16} className="text-muted-soft" />}
+                  />
+                </div>
+                <div className="col-md-6">
+                  <Input 
+                    label="URL du flux (streaming)" 
+                    placeholder="https://stream.mnlv.com/live"
+                    value={formData.stream_url}
+                    onChange={e => setFormData({...formData, stream_url: e.target.value})}
+                    icon={<Activity size={16} className="text-muted-soft" />}
+                  />
+                </div>
+                <div className="col-md-6">
+                  <Input 
+                    label="Site web" 
+                    placeholder="https://mnlvmedia.com"
+                    value={formData.url}
+                    onChange={e => setFormData({...formData, url: e.target.value})}
+                    icon={<Globe size={16} className="text-muted-soft" />}
+                  />
+                </div>
+                <div className="col-12">
+                  <div className="mb-0">
+                    <label className="form-label fw-700 text-main small text-uppercase ls-1 mb-2">Description</label>
+                    <textarea 
+                      className="form-control border-0 bg-light-soft rounded-3 py-2"
+                      rows={3}
+                      placeholder="Radio en ligne dédiée à la musique urbaine..."
+                      value={formData.description}
+                      onChange={e => setFormData({...formData, description: e.target.value})}
+                    ></textarea>
+                  </div>
+                </div>
+                <div className="col-md-4">
+                  <Input 
+                    label="Catégorie" 
+                    placeholder="Musique / Actualités"
+                    value={formData.genre}
+                    onChange={e => setFormData({...formData, genre: e.target.value})}
+                    icon={<Music size={16} className="text-muted-soft" />}
+                  />
+                </div>
+                <div className="col-md-4">
+                  <Input 
+                    label="Langue principale" 
+                    placeholder="Français"
+                    value={formData.language}
+                    onChange={e => setFormData({...formData, language: e.target.value})}
+                    icon={<Languages size={16} className="text-muted-soft" />}
+                  />
+                </div>
+                <div className="col-md-4">
+                  <CountrySelect
+                    label="Pays"
+                    value={formData.country}
+                    onChange={(val) => setFormData({ ...formData, country: val })}
+                  />
+                </div>
               </div>
             </div>
-            <div className="col-6">
-              <div className="mb-4">
-                <label className="form-label fw-700 text-main small text-uppercase ls-1 mb-2">Diffusion</label>
-                <select 
-                  className="form-select"
-                  value={formData.frontend_type}
-                  onChange={e => setFormData({...formData, frontend_type: e.target.value})}
-                >
-                  <option value="icecast">Icecast</option>
-                  <option value="shoutcast">Shoutcast</option>
-                </select>
+
+            {/* Section 2: Configuration technique */}
+            <div className="col-12">
+              <div className="d-flex align-items-center gap-2 mb-3 pb-2 border-bottom">
+                <Settings size={20} className="text-primary" />
+                <h5 className="fw-800 text-main mb-0">Configuration technique</h5>
+              </div>
+              <div className="row g-3">
+                <div className="col-6">
+                  <div className="mb-0">
+                    <label className="form-label fw-700 text-main small text-uppercase ls-1 mb-2">{t('stations.create_modal.backend_type')}</label>
+                    <select 
+                      className="form-select border-0 bg-light-soft rounded-3 py-2"
+                      value={formData.backend_type}
+                      onChange={e => setFormData({...formData, backend_type: e.target.value})}
+                    >
+                      <option value="liquidsoap">Liquidsoap</option>
+                      <option value="none">Aucun</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="col-6">
+                  <div className="mb-0">
+                    <label className="form-label fw-700 text-main small text-uppercase ls-1 mb-2">{t('stations.create_modal.frontend_type')}</label>
+                    <select 
+                      className="form-select border-0 bg-light-soft rounded-3 py-2"
+                      value={formData.frontend_type}
+                      onChange={e => setFormData({...formData, frontend_type: e.target.value})}
+                    >
+                      <option value="icecast">Icecast</option>
+                      <option value="shoutcast">Shoutcast</option>
+                    </select>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
 
-          <div className="d-flex justify-content-end gap-2 mt-4">
-            <Button variant="light" onClick={() => setIsCreateModalOpen(false)}>Annuler</Button>
-            <Button type="submit" variant="danger" loading={createMutation.isPending}>Créer la Station</Button>
+          <div className="d-flex justify-content-end gap-2 mt-2 pt-4 border-top">
+            <Button variant="light" onClick={() => setIsCreateModalOpen(false)}>{t('common.cancel')}</Button>
+            <Button type="submit" variant="danger" loading={createMutation.isPending} icon={<Plus size={18} />}>{t('common.create')}</Button>
           </div>
         </form>
       </Modal>

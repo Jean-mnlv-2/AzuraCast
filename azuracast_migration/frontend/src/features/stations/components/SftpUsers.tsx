@@ -161,13 +161,14 @@ const SftpUsers: React.FC = () => {
                 </div>
               }
             >
-              <div className="d-flex align-items-center gap-4">
-                <div className="bg-light-soft rounded-3 p-3 text-danger">
-                  <HardDrive size={32} />
+              <div className="d-flex align-items-center gap-3">
+                <div className="bg-light-soft text-main p-2 rounded-3">
+                  <User size={20} />
                 </div>
                 <div className="flex-grow-1">
-                  <div className="d-flex align-items-center gap-2 mb-1">
-                    <h5 className="mb-0 fw-bold">{user.username}</h5>
+                  <div>
+                    <h6 className="fw-700 text-main mb-0">{user.username}</h6>
+                    <span className="smaller text-muted-soft fw-600 text-uppercase ls-1">Accès SFTP</span>
                   </div>
                   <div className="d-flex gap-3 small text-muted">
                     <span className="d-flex align-items-center gap-1"><User size={14} /> Accès Médias</span>

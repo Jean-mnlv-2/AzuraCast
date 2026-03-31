@@ -145,10 +145,12 @@ const StationMounts: React.FC = () => {
                 </div>
                 <div className="flex-grow-1">
                   <div className="d-flex align-items-center gap-2 mb-1">
-                    <h5 className="mb-0 fw-bold">{mount.display_name}</h5>
+                    <div>
+                      <h5 className="mb-0 fw-bold text-main">{mount.display_name || mount.name}</h5>
+                      <span className="smaller text-muted-soft fw-600 text-uppercase ls-1">/{mount.name}</span>
+                    </div>
                     {mount.is_default && <span className="badge bg-danger-soft text-danger small">{t('mounts.default')}</span>}
                   </div>
-                  <p className="text-muted small mb-2 font-monospace">{mount.name}</p>
                   <div className="d-flex gap-3 small text-muted">
                     <span className="d-flex align-items-center gap-1"><Radio size={14} /> {mount.autodj_bitrate}kbps {mount.autodj_format.toUpperCase()}</span>
                     {mount.is_public && <span className="d-flex align-items-center gap-1"><Shield size={14} /> {t('mounts.public')}</span>}

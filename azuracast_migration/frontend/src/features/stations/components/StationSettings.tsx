@@ -4,7 +4,6 @@ import { useTranslation } from 'react-i18next';
 import { useParams, Link } from 'react-router-dom';
 import { 
   Save, 
-  Info, 
   Radio, 
   Zap, 
   Settings as SettingsIcon,
@@ -14,9 +13,11 @@ import {
   Megaphone,
   Plus,
   Trash2,
+  Users,
   Calendar,
   Clock,
-  Edit
+  Edit,
+  Info
 } from 'lucide-react';
 import axios from '../../../api/axios';
 import Button from '../../../components/ui/Button';
@@ -55,13 +56,29 @@ const StationSettings: React.FC = () => {
     crossfade: 2.0,
   });
 
-  const { data: station, isLoading } = useQuery({
+  const { data: station, isLoading, refetch } = useQuery({
     queryKey: ['station_settings', station_short_name],
     queryFn: async () => {
       const response = await axios.get(`/stations/${station_short_name}/`);
       return response.data;
     },
   });
+
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const formData = new FormData();
+      formData.append('logo', file);
+      try {
+        await axios.patch(`/stations/${station_short_name}/`, formData, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        });
+        refetch();
+      } catch (err) {
+        console.error('Logo upload failed', err);
+      }
+    }
+  };
 
   const { data: advertisements, isLoading: isAdsLoading } = useQuery({
     queryKey: ['station_advertisements', station_short_name],
@@ -188,9 +205,15 @@ const StationSettings: React.FC = () => {
     const isActive = adFormData.get('is_active') === 'on' || adFormData.get('is_active') === 'true';
     adFormData.set('is_active', isActive ? 'true' : 'false');
     
-    // Handle play_interval
+    // Handle numeric fields
     const playInterval = parseInt(adFormData.get('play_interval') as string) || 0;
     adFormData.set('play_interval', playInterval.toString());
+    
+    const targetPlays = parseInt(adFormData.get('target_plays') as string) || 0;
+    adFormData.set('target_plays', targetPlays.toString());
+    
+    const targetListeners = parseInt(adFormData.get('target_listeners') as string) || 0;
+    adFormData.set('target_listeners', targetListeners.toString());
 
     adMutation.mutate(adFormData);
   };
@@ -248,57 +271,91 @@ const StationSettings: React.FC = () => {
             <form onSubmit={handleSubmit}>
               {activeTab === 'basic' && (
                 <div className="row g-4">
-                  <div className="col-12">
-                    <Input 
-                      label={t('station_settings.basic.name')} 
-                      name="name" 
-                      value={formData.name} 
-                      onChange={handleChange} 
-                      required 
-                    />
-                  </div>
-                  <div className="col-12">
-                    <label className="form-label small fw-bold text-muted text-uppercase ls-1 mb-2">
-                      {t('station_settings.basic.description')}
-                    </label>
-                    <textarea 
-                      className="form-control" 
-                      rows={4} 
-                      name="description" 
-                      value={formData.description} 
-                      onChange={handleChange}
-                      placeholder="..."
-                    ></textarea>
-                  </div>
-                  <div className="col-md-6">
-                    <Input 
-                      label={t('station_settings.basic.genre')} 
-                      name="genre" 
-                      value={formData.genre} 
-                      onChange={handleChange} 
-                    />
-                  </div>
-                  <div className="col-md-6">
-                    <Input 
-                      label={t('station_settings.basic.url')} 
-                      name="url" 
-                      value={formData.url} 
-                      onChange={handleChange} 
-                    />
-                  </div>
-                  <div className="col-12 mt-3">
-                    <div className="form-check form-switch custom-switch">
-                      <input 
-                        className="form-check-input" 
-                        type="checkbox" 
-                        name="enable_public_page" 
-                        checked={formData.enable_public_page} 
-                        onChange={handleChange} 
-                        id="enable_public_page" 
+                  <div className="col-lg-4">
+                    <div className="bw-section text-center">
+                      <h6 className="fw-800 text-main mb-4 text-uppercase ls-1 small">Logo de la Radio</h6>
+                      <div 
+                        className="mx-auto mb-4 bg-light-soft rounded-4 d-flex align-items-center justify-content-center overflow-hidden border-2 border-dashed border-muted-soft position-relative hover-bg-light transition-all cursor-pointer" 
+                        style={{ width: '160px', height: '160px' }}
+                        onClick={() => document.getElementById('logo-settings-upload')?.click()}
+                      >
+                        {station?.logo || station?.logo_external_url ? (
+                          <img 
+                            src={station.logo_external_url || (station.logo?.startsWith('http') ? station.logo : `${import.meta.env.VITE_API_URL}${station.logo}`)} 
+                            alt="Logo" 
+                            className="w-100 h-100 object-fit-cover" 
+                          />
+                        ) : (
+                          <div className="text-center p-3">
+                            <Palette size={32} className="text-muted-soft mb-2" />
+                            <div className="smaller text-muted-soft fw-600">Cliquer pour changer</div>
+                          </div>
+                        )}
+                        <input id="logo-settings-upload" type="file" className="d-none" accept="image/*" onChange={handleLogoUpload} />
+                      </div>
+                      <Input 
+                        label="Ou URL externe" 
+                        placeholder="https://..." 
+                        value={formData.logo_external_url || ''} 
+                        onChange={e => setFormData({...formData, logo_external_url: e.target.value})} 
                       />
-                      <label className="form-check-label fw-bold text-main" htmlFor="enable_public_page">
-                        {t('station_settings.basic.enable_public_page')}
-                      </label>
+                    </div>
+                  </div>
+                  <div className="col-lg-8">
+                    <div className="row g-4">
+                      <div className="col-12">
+                        <Input 
+                          label={t('station_settings.basic.name')} 
+                          name="name" 
+                          value={formData.name} 
+                          onChange={handleChange} 
+                          required 
+                        />
+                      </div>
+                      <div className="col-12">
+                        <label className="form-label small fw-bold text-muted text-uppercase ls-1 mb-2">
+                          {t('station_settings.basic.description')}
+                        </label>
+                        <textarea 
+                          className="form-control" 
+                          rows={4} 
+                          name="description" 
+                          value={formData.description} 
+                          onChange={handleChange}
+                          placeholder="..."
+                        ></textarea>
+                      </div>
+                      <div className="col-md-6">
+                        <Input 
+                          label={t('station_settings.basic.genre')} 
+                          name="genre" 
+                          value={formData.genre} 
+                          onChange={handleChange} 
+                        />
+                      </div>
+                      <div className="col-md-6">
+                        <Input 
+                          label={t('station_settings.basic.url')} 
+                          name="url" 
+                          value={formData.url} 
+                          onChange={handleChange} 
+                        />
+                      </div>
+                      <div className="col-12 mt-3">
+                        <div className="form-check form-switch custom-switch">
+                          <input 
+                            className="form-check-input" 
+                            type="checkbox" 
+                            name="enable_public_page" 
+                            checked={formData.enable_public_page} 
+                            onChange={handleChange} 
+                            id="enable_public_page" 
+                          />
+                          <label className="form-check-label fw-bold text-main" htmlFor="enable_public_page">
+                            {t('station_settings.basic.enable_public_page')}
+                          </label>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -423,6 +480,29 @@ const StationSettings: React.FC = () => {
                     </div>
                     
                     {formData.ad_config?.enabled && (
+                      <div className="row g-4 mb-5">
+                        <div className="col-md-4">
+                          <div className="bw-card-flat p-4 bg-light-soft text-center">
+                            <div className="smaller text-muted fw-bold text-uppercase ls-1 mb-1">Campagnes Actives</div>
+                            <div className="h3 fw-800 text-main mb-0">{advertisements?.filter((a: any) => a.is_active).length || 0}</div>
+                          </div>
+                        </div>
+                        <div className="col-md-4">
+                          <div className="bw-card-flat p-4 bg-light-soft text-center">
+                            <div className="smaller text-muted fw-bold text-uppercase ls-1 mb-1">Passages (24h)</div>
+                            <div className="h3 fw-800 text-main mb-0">{advertisements?.reduce((acc: number, ad: any) => acc + (ad.playback_count_24h || 0), 0)}</div>
+                          </div>
+                        </div>
+                        <div className="col-md-4">
+                          <div className="bw-card-flat p-4 bg-light-soft text-center">
+                            <div className="smaller text-muted fw-bold text-uppercase ls-1 mb-1">Audience (Est.)</div>
+                            <div className="h3 fw-800 text-primary mb-0">{advertisements?.reduce((acc: number, ad: any) => acc + (ad.unique_listeners || 0), 0)}</div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {formData.ad_config?.enabled && (
                       <div className="row g-4 p-4 bg-light-soft rounded-4 border border-primary border-opacity-10 mb-5">
                         <div className="col-md-6">
                           <Input 
@@ -468,6 +548,7 @@ const StationSettings: React.FC = () => {
                           <thead>
                             <tr>
                               <th className="ps-0">{t('station_settings.ads.regie.table.name')}</th>
+                              <th>Objectif</th>
                               <th>{t('station_settings.ads.regie.table.schedule')}</th>
                               <th>{t('station_settings.ads.regie.table.status')}</th>
                               <th className="text-end pe-0">{t('common.actions')}</th>
@@ -480,6 +561,50 @@ const StationSettings: React.FC = () => {
                                   <div className="fw-bold text-main">{ad.name}</div>
                                   <div className="small text-muted text-truncate" style={{ maxWidth: '200px' }}>
                                     {ad.audio_file ? `Fichier: ${ad.audio_file.split('/').pop()}` : ad.media_url}
+                                  </div>
+                                  {ad.target_countries && (
+                                    <div className="mt-1">
+                                      {ad.target_countries.split(',').map((c: string) => (
+                                        <span key={c} className="badge bg-light text-muted smaller me-1">{c.trim()}</span>
+                                      ))}
+                                    </div>
+                                  )}
+                                </td>
+                                <td>
+                                  <div className="d-flex flex-column gap-2" style={{ width: '160px' }}>
+                                    {/* Progress Plays */}
+                                    {ad.target_plays > 0 && (
+                                      <div>
+                                        <div className="d-flex justify-content-between smaller fw-bold mb-1">
+                                          <span><Zap size={10} /> {ad.playback_count || 0} / {ad.target_plays}</span>
+                                          <span>{ad.plays_progress_percentage}%</span>
+                                        </div>
+                                        <div className="progress" style={{ height: '4px' }}>
+                                          <div 
+                                            className={`progress-bar ${ad.plays_progress_percentage >= 100 ? 'bg-success' : 'bg-primary'}`} 
+                                            style={{ width: `${Math.min(100, ad.plays_progress_percentage)}%` }}
+                                          ></div>
+                                        </div>
+                                      </div>
+                                    )}
+                                    {/* Progress Listeners */}
+                                    {ad.target_listeners > 0 && (
+                                      <div>
+                                        <div className="d-flex justify-content-between smaller fw-bold mb-1">
+                                          <span><Users size={10} /> {ad.unique_listeners || 0} / {ad.target_listeners}</span>
+                                          <span>{ad.listeners_progress_percentage}%</span>
+                                        </div>
+                                        <div className="progress" style={{ height: '4px' }}>
+                                          <div 
+                                            className={`progress-bar ${ad.listeners_progress_percentage >= 100 ? 'bg-success' : 'bg-info'}`} 
+                                            style={{ width: `${Math.min(100, ad.listeners_progress_percentage)}%` }}
+                                          ></div>
+                                        </div>
+                                      </div>
+                                    )}
+                                    {ad.target_plays <= 0 && ad.target_listeners <= 0 && (
+                                      <span className="text-muted smaller fw-600">Illimité</span>
+                                    )}
                                   </div>
                                 </td>
                                 <td>
@@ -654,17 +779,65 @@ const StationSettings: React.FC = () => {
                 defaultValue={selectedAd?.media_url || ''} 
               />
             </div>
+            
             <div className="col-md-6">
               <Input 
-                label={t('station_settings.ads.regie.modal.play_interval')} 
+                label="Objectif de diffusions" 
+                name="target_plays" 
+                type="number"
+                defaultValue={selectedAd?.target_plays || 0} 
+                helperText="Total passages prévus (0 = illimité)"
+              />
+            </div>
+            <div className="col-md-6">
+              <Input 
+                label="Objectif d'auditeurs" 
+                name="target_listeners" 
+                type="number"
+                defaultValue={selectedAd?.target_listeners || 0} 
+                helperText="Total auditeurs uniques visés (0 = illimité)"
+              />
+            </div>
+            <div className="col-md-6">
+              <Input 
+                label="Intervalle (minutes)" 
                 name="play_interval" 
                 type="number"
                 defaultValue={selectedAd?.play_interval || 0} 
                 helperText={t('station_settings.ads.regie.modal.play_interval_help')}
               />
             </div>
-            <div className="col-md-6">
-              <div className="form-check form-switch custom-switch mt-4 pt-2">
+
+            <div className="col-12">
+              <div className="bw-card-flat p-4 bg-primary-soft border-0">
+                <h6 className="fw-bold text-primary mb-3 d-flex align-items-center gap-2">
+                  <Zap size={18} /> Ciblage Géographique (DAI)
+                </h6>
+                <div className="row g-3">
+                  <div className="col-md-6">
+                    <Input 
+                      label="Pays cibles" 
+                      name="target_countries" 
+                      placeholder="Ex: CM, FR, BE"
+                      defaultValue={selectedAd?.target_countries || ''} 
+                      helperText="Codes ISO séparés par des virgules"
+                    />
+                  </div>
+                  <div className="col-md-6">
+                    <Input 
+                      label="Villes cibles" 
+                      name="target_cities" 
+                      placeholder="Ex: Douala, Paris"
+                      defaultValue={selectedAd?.target_cities || ''} 
+                      helperText="Noms des villes séparés par des virgules"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="col-md-12">
+              <div className="form-check form-switch custom-switch">
                 <input 
                   className="form-check-input" 
                   type="checkbox" 
@@ -721,21 +894,29 @@ const StationSettings: React.FC = () => {
                   <div className="col-12 mt-2">
                     <label className="form-label small fw-bold text-muted text-uppercase ls-1">{t('station_settings.ads.regie.modal.days')}</label>
                     <div className="d-flex flex-wrap gap-2">
-                      {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day, idx) => {
+                      {['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'].map((day, idx) => {
                         const dayNum = idx + 1;
-                        const isChecked = selectedAd?.schedule_items?.[0]?.days ? 
-                          selectedAd.schedule_items[0].days.split(',').includes(String(dayNum)) : 
+                        const daysString = selectedAd?.schedule_items?.[0]?.days || '';
+                        const isChecked = daysString ? 
+                          daysString.split(',').includes(String(dayNum)) : 
                           true;
+                        
                         return (
-                          <div key={day} className="form-check form-check-inline">
+                          <div key={day} className="position-relative">
                             <input 
-                              className="form-check-input" 
+                              className="btn-check" 
                               type="checkbox" 
                               name={`day_${idx}`} 
                               id={`day_${idx}`} 
                               defaultChecked={isChecked} 
                             />
-                            <label className="form-check-label small fw-bold" htmlFor={`day_${idx}`}>{day}</label>
+                            <label 
+                              className="btn btn-outline-primary btn-sm rounded-pill px-3 fw-bold" 
+                              htmlFor={`day_${idx}`}
+                              style={{ minWidth: '55px' }}
+                            >
+                              {day}
+                            </label>
                           </div>
                         );
                       })}

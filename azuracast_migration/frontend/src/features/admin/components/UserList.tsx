@@ -112,8 +112,8 @@ const UserList: React.FC = () => {
     <div>
       <div className="d-flex justify-content-between align-items-center mb-5">
         <div>
-          <h1 className="fw-bold tracking-tight text-dark mb-1 text-main">{t('users.title')}</h1>
-          <p className="text-muted mb-0">{t('users.subtitle')}</p>
+          <h1 className="fw-bold tracking-tight text-main mb-1">{t('users.title')}</h1>
+          <p className="text-muted-soft mb-0">{t('users.subtitle')}</p>
         </div>
         <Button variant="danger" icon={<Plus size={20} />} onClick={openCreate}>
           {t('users.new_user')}
@@ -126,7 +126,7 @@ const UserList: React.FC = () => {
             placeholder={t('users.search_placeholder')}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            icon={<Search size={18} className="text-muted" />}
+            icon={<Search size={18} className="text-muted-soft" />}
           />
         </div>
 
@@ -149,8 +149,8 @@ const UserList: React.FC = () => {
                         {user.name?.[0].toUpperCase() || user.email[0].toUpperCase()}
                       </div>
                       <div>
-                        <div className="fw-bold text-dark text-main">{user.name || 'Sans nom'}</div>
-                        <div className="small text-muted">{user.email}</div>
+                        <div className="fw-bold text-main">{user.name || 'Sans nom'}</div>
+                        <div className="small text-muted-soft">{user.email}</div>
                       </div>
                     </div>
                   </td>
@@ -217,32 +217,39 @@ const UserList: React.FC = () => {
           </>
         }
       >
-        <div className="d-flex flex-column gap-3">
+        <div className="d-flex flex-column gap-3 mt-2">
+          <Input
+            label={t('users.modal.name')}
+            placeholder="ex: Jean Jacques"
+            value={form.name}
+            onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+            required
+          />
           {!editingUser && (
             <div>
               <label className="form-label fw-semibold">{t('users.modal.email')}</label>
               <input
                 type="email"
-                className="form-control"
+                className="form-control shadow-none"
                 value={form.email}
                 onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
-                placeholder="jean.dupont@example.com"
+                placeholder="jean.jacques@example.com"
                 required
               />
+              <div className="form-text small opacity-75">Cette adresse servira d'identifiant de connexion.</div>
             </div>
           )}
           {editingUser && (
-            <div className="small text-muted">
-              <Mail size={14} className="me-1" />
-              {editingUser.email}
+            <div className="p-3 bg-light-soft rounded-3 d-flex align-items-center gap-3">
+              <div className="bg-white p-2 rounded-circle shadow-sm">
+                <Mail size={18} className="text-danger" />
+              </div>
+              <div>
+                <div className="small text-muted-soft fw-bold text-uppercase ls-1">Identifiant Email</div>
+                <div className="fw-bold text-main">{editingUser.email}</div>
+              </div>
             </div>
           )}
-          <Input
-            label={t('users.modal.name')}
-            placeholder="ex: Jean Dupont"
-            value={form.name}
-            onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-          />
           <Input
             label={editingUser ? `${t('users.modal.password')} (optionnel)` : t('users.modal.password')}
             type="password"
@@ -251,29 +258,36 @@ const UserList: React.FC = () => {
             onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
             required={!editingUser}
           />
-          <div className="form-check form-switch">
-            <input
-              className="form-check-input"
-              type="checkbox"
-              id="isSuperuser"
-              checked={form.is_superuser}
-              onChange={(e) => setForm((f) => ({ ...f, is_superuser: e.target.checked }))}
-            />
-            <label className="form-check-label fw-semibold text-main" htmlFor="isSuperuser">
-              {t('users.modal.is_superuser')}
-            </label>
-          </div>
-          <div className="form-check form-switch">
-            <input
-              className="form-check-input"
-              type="checkbox"
-              id="isActive"
-              checked={form.is_active}
-              onChange={(e) => setForm((f) => ({ ...f, is_active: e.target.checked }))}
-            />
-            <label className="form-check-label fw-semibold text-main" htmlFor="isActive">
-              {t('users.status.active')}
-            </label>
+          <hr className="my-2 opacity-10" />
+          <div className="row g-3">
+            <div className="col-md-6">
+              <div className="form-check form-switch custom-switch">
+                <input
+                  className="form-check-input"
+                  type="checkbox"
+                  id="isSuperuser"
+                  checked={form.is_superuser}
+                  onChange={(e) => setForm((f) => ({ ...f, is_superuser: e.target.checked }))}
+                />
+                <label className="form-check-label fw-bold text-main small text-uppercase" htmlFor="isSuperuser">
+                  {t('users.modal.is_superuser')}
+                </label>
+              </div>
+            </div>
+            <div className="col-md-6">
+              <div className="form-check form-switch custom-switch">
+                <input
+                  className="form-check-input"
+                  type="checkbox"
+                  id="isActive"
+                  checked={form.is_active}
+                  onChange={(e) => setForm((f) => ({ ...f, is_active: e.target.checked }))}
+                />
+                <label className="form-check-label fw-bold text-main small text-uppercase" htmlFor="isActive">
+                  {t('users.status.active')}
+                </label>
+              </div>
+            </div>
           </div>
         </div>
       </Modal>

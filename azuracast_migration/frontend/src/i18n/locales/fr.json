@@ -32,7 +32,11 @@
     "remotes": "Relais Distants",
     "hls_streams": "Flux HLS",
     "sftp_users": "Utilisateurs SFTP",
-    "analytics": "Audience"
+    "analytics": "Statistiques",
+    "podcasts": "Podcasts",
+    "all_stations": "Gestion des Radios",
+    "overview": "Vue d'Ensemble",
+    "documentation": "Documentation"
   },
   "login": {
     "title": "Connexion",
@@ -41,8 +45,22 @@
     "remember_me": "Se souvenir de moi",
     "forgot_password": "Mot de passe oublié ?",
     "submit": "Se connecter",
+    "register_link": "Pas de compte ? S'inscrire",
     "error_invalid": "Identifiants invalides. Veuillez réessayer.",
     "error_generic": "Une erreur est survenue lors de la connexion."
+  },
+  "register": {
+    "title": "Inscription",
+    "subtitle": "Rejoignez BantuWave et créez votre propre station de radio.",
+    "email": "Adresse Email",
+    "password": "Mot de passe",
+    "confirm_password": "Confirmer le mot de passe",
+    "name": "Nom complet",
+    "submit": "Créer mon compte",
+    "login_link": "Déjà inscrit ? Se connecter",
+    "success": "Inscription réussie ! Vous pouvez maintenant vous connecter.",
+    "error_mismatch": "Les mots de passe ne correspondent pas.",
+    "error_generic": "Une erreur est survenue lors de l'inscription."
   },
   "stations": {
     "title": "Stations Radio",
@@ -68,6 +86,7 @@
     "subtitle": "Gérez vos fichiers audio et organisez vos dossiers.",
     "upload": "Transférer",
     "new_folder": "Nouveau Dossier",
+    "new_folder_name": "Nom du nouveau dossier",
     "select_all": "Sélectionner tout",
     "table": {
       "title": "Titre / Fichier",
@@ -293,5 +312,19 @@
     "no_data": "Aucun webhook configuré",
     "no_data_desc": "Connectez votre radio BantuWave à Discord, Telegram ou d'autres services.",
     "delete_confirm": "Voulez-vous vraiment supprimer ce webhook ?"
+  },
+  "podcasts": {
+    "title": "Podcasts",
+    "new": "Nouveau Podcast",
+    "episodes_count_one": "{{count}} épisode",
+    "episodes_count_other": "{{count}} épisodes",
+    "no_podcasts": "Aucun podcast trouvé",
+    "rss_feed": "Flux RSS",
+    "copy_rss": "Copier le flux RSS",
+    "modal": {
+      "title": "Nouveau podcast",
+      "name": "Titre",
+      "description": "Description"
+    }
   }
 }

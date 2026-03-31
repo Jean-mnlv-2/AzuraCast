@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Mail, Lock, LogIn, Radio, Languages, Zap, Activity, Globe, Eye, EyeOff } from 'lucide-react';
+import { Mail, Lock, LogIn, Radio, Languages, Zap, Activity, Globe, Eye, EyeOff, UserPlus } from 'lucide-react';
 import { useAuthStore } from '../../store/useAuthStore';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
@@ -41,7 +41,7 @@ const Login: React.FC = () => {
       alert("Si un compte existe avec cet e-mail, un lien de réinitialisation a été envoyé.");
       setIsForgotModalOpen(false);
       setForgotEmail('');
-    } catch (err) {
+    } catch {
       alert("Une erreur est survenue. Veuillez réessayer plus tard.");
     } finally {
       setIsForgotLoading(false);
@@ -60,7 +60,7 @@ const Login: React.FC = () => {
       } else {
         setError(t('login.error_invalid'));
       }
-    } catch (err) {
+    } catch {
       setError(t('login.error_generic'));
     } finally {
       setIsLoading(false);
@@ -109,19 +109,19 @@ const Login: React.FC = () => {
           </div>
 
           {/* Right Side: Login Form */}
-          <div className="col-lg-7 p-4 p-md-5">
+          <div className="col-lg-7 p-4 p-md-5 bg-surface">
             <div className="d-flex justify-content-between align-items-start mb-4 mb-md-5 gap-3">
               <div>
-                <h2 className="fw-bold text-dark mb-1 h3">{t('login.title')}</h2>
-                <p className="text-muted small mb-0">Connexion sécurisée à votre console</p>
+                <h2 className="fw-bold text-main mb-1 h3">{t('login.title')}</h2>
+                <p className="text-muted-soft small mb-0">Connexion sécurisée à votre console</p>
               </div>
               <button
                 type="button"
-                className="btn btn-light rounded-pill px-3 py-2 border border-light-subtle shadow-none d-flex align-items-center gap-2"
+                className="btn btn-light-soft rounded-pill px-3 py-2 border border-light-subtle shadow-none d-flex align-items-center gap-2"
                 onClick={toggleLanguage}
               >
-                <Languages size={18} className="text-muted" />
-                <span className="small fw-semibold text-uppercase text-muted">{i18n.language}</span>
+                <Languages size={18} className="text-muted-soft" />
+                <span className="small fw-semibold text-uppercase text-muted-soft">{i18n.language}</span>
               </button>
             </div>
             
@@ -142,8 +142,8 @@ const Login: React.FC = () => {
                   placeholder="votre@email.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  icon={<Mail size={18} className="text-muted" />}
-                  className="rounded-4 py-3 border-light-soft bg-white bg-opacity-50 fw-bold shadow-none"
+                  icon={<Mail size={18} className="text-muted-soft" />}
+                  className="rounded-4 py-3 border-light-soft bg-light-soft fw-bold shadow-none"
                   required
                 />
               </div>
@@ -155,17 +155,17 @@ const Login: React.FC = () => {
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  icon={<Lock size={18} className="text-muted" />}
+                  icon={<Lock size={18} className="text-muted-soft" />}
                   rightElement={
                     <button 
                       type="button" 
-                      className="btn btn-link p-0 text-muted shadow-none border-0"
+                      className="btn btn-link p-0 text-muted-soft shadow-none border-0"
                       onClick={() => setShowPassword(!showPassword)}
                     >
                       {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                     </button>
                   }
-                  className="rounded-4 py-3 border-light-soft bg-white bg-opacity-50 fw-bold shadow-none"
+                  className="rounded-4 py-3 border-light-soft bg-light-soft fw-bold shadow-none"
                   required
                 />
               </div>
@@ -173,7 +173,7 @@ const Login: React.FC = () => {
               <div className="d-flex justify-content-between align-items-center mb-5">
                 <div className="form-check custom-checkbox">
                   <input type="checkbox" className="form-check-input shadow-none" id="remember" />
-                  <label className="form-check-label small text-muted fw-800" htmlFor="remember">
+                  <label className="form-check-label small text-muted-soft fw-800" htmlFor="remember">
                     {t('login.remember_me')}
                   </label>
                 </div>
@@ -191,6 +191,13 @@ const Login: React.FC = () => {
               >
                 {t('login.submit')}
               </Button>
+
+              <div className="text-center mt-4">
+                <Link to="/register" className="btn btn-link text-muted-soft small text-decoration-none d-inline-flex align-items-center gap-2 transition-all hover-translate-y">
+                  <UserPlus size={16} className="text-primary" />
+                  <span className="fw-600">{t('login.register_link')}</span>
+                </Link>
+              </div>
             </form>
 
             <div className="mt-4 text-center">

@@ -2,18 +2,29 @@ import pyotp
 import qrcode
 import io
 import base64
-from rest_framework import viewsets, permissions, status
+from rest_framework import viewsets, permissions, status, generics
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.contrib.auth.models import Group
-from .models import User, ApiKey
+from .models import User, ApiKey, RolePermission
 from .serializers import (
     UserSerializer,
     UserCreateSerializer,
     UserAdminUpdateSerializer,
     GroupSerializer,
     ApiKeySerializer,
+    RolePermissionSerializer,
 )
+from bantuwave.emails import send_welcome_email
+
+class RegisterView(generics.CreateAPIView):
+    queryset = User.objects.all()
+    serializer_class = UserCreateSerializer
+    permission_classes = [permissions.AllowAny]
+
+    def perform_create(self, serializer):
+        user = serializer.save()
+        send_welcome_email(user)
 
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
@@ -86,9 +97,21 @@ class UserViewSet(viewsets.ModelViewSet):
             
         try:
             user = User.objects.get(email=email)
-            import logging
-            logger = logging.getLogger(__name__)
-            logger.info(f"Password reset requested for user: {email}")
+            from bantuwave.emails import send_centralized_email
+            from django.contrib.auth.tokens import default_token_generator
+            from django.utils.http import urlsafe_base64_encode
+            from django.utils.encoding import force_bytes
+            
+            token = default_token_generator.make_token(user)
+            uid = urlsafe_base64_encode(force_bytes(user.pk))
+            reset_url = f"{getattr(settings, 'FRONTEND_URL', 'http://localhost:8080')}/reset-password/{uid}/{token}"
+            
+            send_centralized_email(
+                "Réinitialisation de votre mot de passe",
+                'emails/password_reset.html',
+                {'user': user, 'reset_url': reset_url},
+                [user.email]
+            )
             
             return Response({'status': 'If an account exists with this email, a reset link has been sent.'})
         except User.DoesNotExist:
@@ -99,12 +122,20 @@ class GroupViewSet(viewsets.ModelViewSet):
     serializer_class = GroupSerializer
     permission_classes = [permissions.IsAdminUser]
 
+class RolePermissionViewSet(viewsets.ModelViewSet):
+    queryset = RolePermission.objects.all()
+    serializer_class = RolePermissionSerializer
+    permission_classes = [permissions.IsAdminUser]
+
 class ApiKeyViewSet(viewsets.ModelViewSet):
+    queryset = ApiKey.objects.all()
     serializer_class = ApiKeySerializer
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        return ApiKey.objects.filter(user=self.request.user)
+        return self.queryset.filter(user=self.request.user)
 
     def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
+        import secrets
+        key = secrets.token_urlsafe(32)
+        serializer.save(user=self.request.user, key_hash=key)

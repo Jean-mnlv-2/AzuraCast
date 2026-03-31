@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bienvenue sur BantuWave</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f4f7f6; }
+        .container { max-width: 600px; margin: 20px auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .header { background: #e63946; color: #ffffff; padding: 30px; text-align: center; }
+        .header h1 { margin: 0; font-size: 24px; text-transform: uppercase; letter-spacing: 1px; }
+        .content { padding: 40px; }
+        .content h2 { color: #e63946; margin-top: 0; }
+        .button-container { text-align: center; margin: 30px 0; }
+        .button { background-color: #e63946; color: #ffffff !important; padding: 12px 24px; text-decoration: none; border-radius: 50px; font-weight: bold; display: inline-block; transition: background 0.3s; }
+        .footer { background: #f8f9fa; padding: 20px; text-align: center; font-size: 12px; color: #6c757d; }
+        .footer p { margin: 5px 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>BantuWave</h1>
+        </div>
+        <div class="content">
+            <h2>Bienvenue, {{ user.name|default:user.email }} !</h2>
+            <p>Nous sommes ravis de vous accueillir sur <strong>BantuWave</strong>, la plateforme moderne pour gérer vos stations de radio.</p>
+            
+            <div style="background: #f8f9fa; border-radius: 8px; padding: 20px; margin: 20px 0; border-left: 4px solid #e63946;">
+                <p style="margin-top: 0; font-weight: bold; color: #e63946;">Détails de votre compte :</p>
+                <ul style="list-style: none; padding: 0; margin: 0; font-size: 14px;">
+                    <li><strong>Type :</strong> {{ user.get_account_type_display }}</li>
+                    {% if user.account_type == 'organization' %}
+                    <li><strong>Organisation :</strong> {{ user.organization_name }}</li>
+                    <li><strong>Structure :</strong> {{ user.structure_type }}</li>
+                    {% endif %}
+                    <li><strong>Email :</strong> {{ user.email }}</li>
+                    <li><strong>Téléphone :</strong> {{ user.phone|default:"Non renseigné" }}</li>
+                    <li><strong>Pays :</strong> {{ user.country|default:"Cameroun" }}</li>
+                </ul>
+            </div>
+
+            <p>Votre compte a été créé avec succès. Vous pouvez maintenant commencer votre aventure radiophonique en créant votre première station.</p>
+            <div class="button-container">
+                <a href="{{ login_url }}" class="button">Se connecter à mon espace</a>
+            </div>
+            <p>Si vous avez des questions, n'hésitez pas à répondre à cet e-mail.</p>
+            <p>À bientôt,<br>L'équipe BantuWave</p>
+        </div>
+        <div class="footer">
+            <p>&copy; 2026 BantuWave. Tous droits réservés.</p>
+            <p>Propulsé par la technologie AzuraCast Migration.</p>
+        </div>
+    </div>
+</body>
+</html>

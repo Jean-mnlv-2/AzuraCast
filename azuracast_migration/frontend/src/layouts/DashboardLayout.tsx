@@ -5,13 +5,12 @@ import {
   Radio, 
   Users, 
   Settings, 
-  Database, 
   LogOut, 
   Menu, 
   X, 
   LayoutDashboard,
+  Mic,
   Music,
-  Calendar,
   Share2,
   BarChart3,
   Sun,
@@ -24,7 +23,8 @@ import {
   HardDrive,
   Globe,
   Activity,
-  Rss
+  Rss,
+  Book
 } from 'lucide-react';
 import { useAuthStore } from '../store/useAuthStore';
 import { useThemeStore } from '../store/useThemeStore';
@@ -43,7 +43,6 @@ interface NavigationItem {
 }
 
 const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const { t, i18n } = useTranslation();
   const location = useLocation();
   const params = useParams<{ station_short_name?: string }>();
@@ -72,8 +71,11 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
   const globalNavigation: NavigationItem[] = [
     { name: t('nav.dashboard'), href: '/', icon: LayoutDashboard },
     { name: t('nav.stations'), href: '/stations', icon: Radio },
+    { name: t('nav.overview'), href: '/admin', icon: Activity, adminOnly: true },
+    { name: t('nav.all_stations'), href: '/admin/stations', icon: Globe, adminOnly: true },
     { name: t('nav.users'), href: '/admin/users', icon: Users, adminOnly: true },
     { name: t('nav.settings'), href: '/admin/settings', icon: Settings, adminOnly: true },
+    { name: t('nav.documentation'), href: '/admin/docs', icon: Book },
   ];
 
   const stationNavigation: NavigationItem[] = [
@@ -88,7 +90,8 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
     { name: t('nav.hls_streams'), href: `/station/${station_short_name}/hls`, icon: Activity },
     { name: t('nav.sftp_users'), href: `/station/${station_short_name}/sftp`, icon: HardDrive },
     { name: t('nav.analytics'), href: `/station/${station_short_name}/analytics`, icon: BarChart3 },
-    { name: 'Podcasts', href: `/station/${station_short_name}/podcasts`, icon: Rss },
+    { name: t('nav.podcasts'), href: `/station/${station_short_name}/podcasts`, icon: Rss },
+    { name: 'Web-DJ Live', href: `/station/${station_short_name}/web-dj`, icon: Mic },
     { name: t('stations.configuration'), href: `/station/${station_short_name}/settings`, icon: Settings },
   ];
 

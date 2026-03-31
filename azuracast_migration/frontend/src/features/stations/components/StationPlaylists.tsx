@@ -2,9 +2,8 @@ import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../../api/axios';
 import { useParams, Link } from 'react-router-dom';
-import { ListMusic, Plus, Settings2, Trash2, PlayCircle, Clock, Shuffle, Repeat, Calendar } from 'lucide-react';
+import { ListMusic, Plus, Settings2, Trash2, Shuffle, Repeat, Calendar, Music } from 'lucide-react';
 import PlaylistEditModal from './PlaylistEditModal';
-import Card from '../../../components/ui/Card';
 import Button from '../../../components/ui/Button';
 
 interface Playlist {
@@ -14,6 +13,7 @@ interface Playlist {
   is_enabled: boolean;
   playback_order: string;
   weight: number;
+  source: string;
 }
 
 const StationPlaylists: React.FC = () => {
@@ -23,7 +23,7 @@ const StationPlaylists: React.FC = () => {
   const [selectedPlaylist, setSelectedPlaylist] = useState<Playlist | null>(null);
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
 
-  const { data: playlists, isLoading, error } = useQuery<Playlist[]>({
+  const { data: playlists, isLoading } = useQuery<Playlist[]>({
     queryKey: ['playlists', station_short_name],
     queryFn: async () => {
       const response = await api.get(`/stations/${station_short_name}/playlists/`);
@@ -43,17 +43,6 @@ const StationPlaylists: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['playlists', station_short_name] });
       setIsEditModalOpen(false);
       setSelectedPlaylist(null);
-    },
-  });
-
-  const togglePlaylistMutation = useMutation({
-    mutationFn: async (playlist: Playlist) => {
-      return api.patch(`/stations/${station_short_name}/playlists/${playlist.id}/`, {
-        is_enabled: !playlist.is_enabled,
-      });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['playlists', station_short_name] });
     },
   });
 
@@ -138,79 +127,115 @@ const StationPlaylists: React.FC = () => {
       </div>
 
       <div className="bw-section p-0 overflow-hidden">
-        <div className="table-responsive">
-          <table className="table mb-0">
-            <thead>
-              <tr>
-                <th className="ps-4">Playlist</th>
-                <th>Type</th>
-                <th>Ordre</th>
-                <th>Poids</th>
-                <th className="text-end pe-4">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {isLoading ? (
+        {viewMode === 'list' ? (
+          <div className="table-responsive">
+            <table className="table mb-0">
+              <thead>
                 <tr>
-                  <td colSpan={5} className="text-center py-5">
-                    <div className="spinner-border spinner-border-sm text-primary me-2"></div>
-                    <span className="text-muted-soft">Chargement des playlists...</span>
-                  </td>
+                  <th className="ps-4">Playlist</th>
+                  <th>Type</th>
+                  <th>Ordre</th>
+                  <th>Poids</th>
+                  <th className="text-end pe-4">Actions</th>
                 </tr>
-              ) : playlists?.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="text-center py-5">
-                    <ListMusic size={48} className="text-muted-soft opacity-20 mb-3" />
-                    <p className="text-muted-soft fw-600">Aucune playlist configurée</p>
-                  </td>
-                </tr>
-              ) : (
-                playlists?.map((playlist) => (
-                  <tr key={playlist.id} className="hover-bg-light-soft transition-all">
-                    <td className="ps-4">
-                      <div className="d-flex align-items-center gap-3">
-                        <div className={`p-2 rounded-3 ${playlist.is_enabled ? 'bg-success-soft text-success' : 'bg-light-soft text-muted'}`}>
-                          <PlayCircle size={20} />
-                        </div>
-                        <div>
-                          <p className="fw-700 text-main mb-0">{playlist.name}</p>
-                          <span className={`smaller fw-700 text-uppercase ${playlist.is_enabled ? 'text-success' : 'text-muted'}`}>
-                            {playlist.is_enabled ? 'Active' : 'Désactivée'}
-                          </span>
-                        </div>
-                      </div>
-                    </td>
-                    <td>
-                      <span className="badge bg-light-soft text-main border border-white-soft px-3 py-2 fw-600">
-                        {playlist.type}
-                      </span>
-                    </td>
-                    <td>
-                      <div className="d-flex align-items-center gap-2 text-muted-soft fw-600 small">
-                        {getOrderIcon(playlist.playback_order)}
-                        {playlist.playback_order}
-                      </div>
-                    </td>
-                    <td>
-                      <div className="d-flex align-items-center gap-2">
-                        <div className="progress flex-grow-1 bg-light-soft" style={{ height: '4px', minWidth: '60px' }}>
-                          <div className="progress-bar bg-primary" style={{ width: `${(playlist.weight / 5) * 100}%` }}></div>
-                        </div>
-                        <span className="small fw-700 text-main">{playlist.weight}</span>
-                      </div>
-                    </td>
-                    <td className="pe-4 text-end">
-                      <div className="d-flex justify-content-end gap-2">
-                        <Button variant="light" size="sm" icon={<Settings2 size={16} />} onClick={() => handleEditClick(playlist)} />
-                        <Button variant="light" size="sm" className="hover-text-danger" icon={<Trash2 size={16} />} onClick={() => handleDeleteClick(playlist.id)} />
-                      </div>
+              </thead>
+              <tbody>
+                {isLoading ? (
+                  <tr>
+                    <td colSpan={5} className="text-center py-5">
+                      <div className="spinner-border spinner-border-sm text-primary me-2"></div>
+                      <span className="text-muted-soft">Chargement des playlists...</span>
                     </td>
                   </tr>
-                ))
+                ) : playlists?.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="text-center py-5">
+                      <ListMusic size={48} className="text-muted-soft opacity-20 mb-3" />
+                      <p className="text-muted-soft fw-600">Aucune playlist configurée</p>
+                    </td>
+                  </tr>
+                ) : (
+                  playlists?.map((playlist) => (
+                    <tr key={playlist.id} className="hover-bg-light-soft transition-all">
+                      <td className="ps-4">
+                        <div className="d-flex align-items-center gap-3">
+                          <div className="bg-primary-soft text-primary p-2 rounded-3">
+                            <ListMusic size={20} />
+                          </div>
+                          <div>
+                            <h6 className="fw-700 text-main mb-0">{playlist.name}</h6>
+                            <span className="smaller text-muted-soft fw-600 text-uppercase ls-1">
+                              {playlist.type} • {playlist.source === 'songs' ? 'Fichiers' : 'Remote'}
+                            </span>
+                          </div>
+                        </div>
+                      </td>
+                      <td>
+                        <span className="badge bg-light-soft text-main border border-white-soft px-3 py-2 fw-600">
+                          {playlist.type}
+                        </span>
+                      </td>
+                      <td>
+                        <div className="d-flex align-items-center gap-2 text-muted-soft fw-600 small">
+                          {getOrderIcon(playlist.playback_order)}
+                          {playlist.playback_order}
+                        </div>
+                      </td>
+                      <td>
+                        <div className="d-flex align-items-center gap-2">
+                          <div className="progress flex-grow-1 bg-light-soft" style={{ height: '4px', minWidth: '60px' }}>
+                            <div className="progress-bar bg-primary" style={{ width: `${(playlist.weight / 5) * 100}%` }}></div>
+                          </div>
+                          <span className="small fw-700 text-main">{playlist.weight}</span>
+                        </div>
+                      </td>
+                      <td className="pe-4 text-end">
+                        <div className="d-flex justify-content-end gap-2">
+                          <Link to={`/station/${station_short_name}/playlists/${playlist.id}/media`}>
+                            <Button variant="light" size="sm" icon={<Music size={16} />} title="Gérer les médias" />
+                          </Link>
+                          <Button variant="light" size="sm" icon={<Settings2 size={16} />} onClick={() => handleEditClick(playlist)} />
+                          <Button variant="light" size="sm" className="hover-text-danger" icon={<Trash2 size={16} />} onClick={() => handleDeleteClick(playlist.id)} />
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="p-5 text-center">
+            <div className="bg-primary-soft text-primary rounded-circle d-inline-flex p-4 mb-4 shadow-sm">
+              <Calendar size={48} />
+            </div>
+            <h4 className="fw-800 text-main mb-3">Planificateur Visuel BantuWave</h4>
+            <p className="text-muted-soft max-width-md mx-auto mb-4">
+              Ici, vous pouvez visualiser la programmation de votre station sur une grille hebdomadaire.
+              Les playlists programmées s'afficheront sous forme de blocs de couleur.
+            </p>
+            <div className="d-flex flex-column gap-2 max-width-md mx-auto">
+              {playlists?.filter(p => (p as any).schedule_items?.length > 0).map(p => (
+                <div key={p.id} className="bw-section p-3 d-flex justify-content-between align-items-center border-start border-4 border-danger">
+                  <div className="text-start">
+                    <h6 className="fw-bold mb-1">{p.name}</h6>
+                    {(p as any).schedule_items.map((s: any, i: number) => (
+                      <span key={i} className="badge bg-light-soft text-muted smaller me-2">
+                        {Math.floor(s.start_time / 100)}h{String(s.start_time % 100).padStart(2, '0')} - {Math.floor(s.end_time / 100)}h{String(s.end_time % 100).padStart(2, '0')}
+                      </span>
+                    ))}
+                  </div>
+                  <Button variant="light" size="sm" icon={<Settings2 size={14} />} onClick={() => handleEditClick(p)}>Gérer</Button>
+                </div>
+              ))}
+              {playlists?.filter(p => (p as any).schedule_items?.length > 0).length === 0 && (
+                <div className="alert bg-light-soft border-0 text-muted small">
+                  Aucune playlist n'a encore d'horaire programmé. Modifiez une playlist pour ajouter des horaires.
+                </div>
               )}
-            </tbody>
-          </table>
-        </div>
+            </div>
+          </div>
+        )}
       </div>
 
       <PlaylistEditModal

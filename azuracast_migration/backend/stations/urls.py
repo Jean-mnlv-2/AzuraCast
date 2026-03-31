@@ -5,6 +5,7 @@ from media.views import StationMediaItemViewSet
 from .views import (
     StationViewSet,
     StationPlaylistViewSet,
+    StationPlaylistFolderViewSet,
     StationStreamerViewSet,
     StationScheduleViewSet,
     StationMountViewSet,
@@ -14,13 +15,22 @@ from .views import (
     StationAdvertisementViewSet
 )
 
-router = DefaultRouter()
-router.register(r'', StationViewSet)
-
 urlpatterns = [
+    # Base station routes
+    path('', StationViewSet.as_view({'get': 'list', 'post': 'create'})),
+    path('schedules/', StationScheduleViewSet.as_view({'get': 'list', 'post': 'create'})),
+    path('schedules/<int:pk>/', StationScheduleViewSet.as_view({'get': 'retrieve', 'put': 'update', 'patch': 'partial_update', 'delete': 'destroy'})),
+
     # Station-specific nested routes
+    path('<str:short_name>/', StationViewSet.as_view({'get': 'retrieve', 'put': 'update', 'patch': 'partial_update', 'delete': 'destroy'})),
     path('<str:station_short_name>/playlists/', StationPlaylistViewSet.as_view({'get': 'list', 'post': 'create'})),
     path('<str:station_short_name>/playlists/<int:pk>/', StationPlaylistViewSet.as_view({'get': 'retrieve', 'put': 'update', 'patch': 'partial_update', 'delete': 'destroy'})),
+    path('<str:station_short_name>/playlists/<int:pk>/eligible-media/', StationPlaylistViewSet.as_view({'get': 'eligible_media'})),
+    path('<str:station_short_name>/playlists/<int:pk>/current-media/', StationPlaylistViewSet.as_view({'get': 'current_media'})),
+    path('<str:station_short_name>/playlists/<int:pk>/media/', StationPlaylistViewSet.as_view({'post': 'manage_media'})),
+    
+    path('<str:station_short_name>/playlists/<int:playlist_pk>/folders/', StationPlaylistFolderViewSet.as_view({'get': 'list', 'post': 'create'})),
+    path('<str:station_short_name>/playlists/<int:playlist_pk>/folders/<int:pk>/', StationPlaylistFolderViewSet.as_view({'get': 'retrieve', 'delete': 'destroy'})),
     
     path('<str:station_short_name>/streamers/', StationStreamerViewSet.as_view({'get': 'list', 'post': 'create'})),
     path('<str:station_short_name>/streamers/<int:pk>/', StationStreamerViewSet.as_view({'get': 'retrieve', 'put': 'update', 'patch': 'partial_update', 'delete': 'destroy'})),
@@ -48,9 +58,4 @@ urlpatterns = [
             'delete': 'destroy',
         }),
     ),
-
-    path('schedules/', StationScheduleViewSet.as_view({'get': 'list', 'post': 'create'})),
-    path('schedules/<int:pk>/', StationScheduleViewSet.as_view({'get': 'retrieve', 'put': 'update', 'patch': 'partial_update', 'delete': 'destroy'})),
-
-    path('', include(router.urls)),
 ]

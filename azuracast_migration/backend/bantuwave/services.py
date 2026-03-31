@@ -68,3 +68,25 @@ class GeoLiteService:
 
     def has_license_key(self):
         return bool(self.get_license_key())
+
+    def get_location(self, ip_address):
+        """
+        Detects location from IP address.
+        For development, it returns a mock location based on specific IP patterns.
+        """
+        if ip_address == '127.0.0.1' or ip_address == '::1':
+            return {'country': 'FR', 'city': 'Paris'}
+            
+        if ip_address.startswith('129.'): 
+            return {'country': 'CM', 'city': 'Douala'}
+            
+        # In production, this would use geoip2 library with MaxMind DB
+        # try:
+        #     import geoip2.database
+        #     # reader = geoip2.database.Reader('/path/to/GeoLite2-City.mmdb')
+        #     # response = reader.city(ip_address)
+        #     # return {'country': response.country.iso_code, 'city': response.city.name}
+        # except Exception:
+        #     pass
+            
+        return {'country': 'UNKNOWN', 'city': 'Unknown'}
