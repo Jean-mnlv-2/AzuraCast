@@ -12,17 +12,20 @@ from .views import (
     StationRemoteViewSet,
     StationHlsStreamViewSet,
     SftpUserViewSet,
-    StationAdvertisementViewSet
+    StationAdvertisementViewSet,
+    GlobalCampaignViewSet
 )
+
+router = DefaultRouter()
+router.register(r'global-campaigns', GlobalCampaignViewSet, basename='global-campaign')
+router.register(r'', StationViewSet, basename='station')
 
 urlpatterns = [
     # Base station routes
-    path('', StationViewSet.as_view({'get': 'list', 'post': 'create'})),
     path('schedules/', StationScheduleViewSet.as_view({'get': 'list', 'post': 'create'})),
     path('schedules/<int:pk>/', StationScheduleViewSet.as_view({'get': 'retrieve', 'put': 'update', 'patch': 'partial_update', 'delete': 'destroy'})),
 
     # Station-specific nested routes
-    path('<str:short_name>/', StationViewSet.as_view({'get': 'retrieve', 'put': 'update', 'patch': 'partial_update', 'delete': 'destroy'})),
     path('<str:station_short_name>/playlists/', StationPlaylistViewSet.as_view({'get': 'list', 'post': 'create'})),
     path('<str:station_short_name>/playlists/<int:pk>/', StationPlaylistViewSet.as_view({'get': 'retrieve', 'put': 'update', 'patch': 'partial_update', 'delete': 'destroy'})),
     path('<str:station_short_name>/playlists/<int:pk>/eligible-media/', StationPlaylistViewSet.as_view({'get': 'eligible_media'})),
@@ -50,12 +53,18 @@ urlpatterns = [
     path('<str:station_short_name>/sftp_users/', SftpUserViewSet.as_view({'get': 'list', 'post': 'create'})),
     path('<str:station_short_name>/sftp_users/<int:pk>/', SftpUserViewSet.as_view({'get': 'retrieve', 'put': 'update', 'patch': 'partial_update', 'delete': 'destroy'})),
 
-    path(
-        '<str:station_short_name>/media/<int:pk>/',
+    path('<str:short_name>/media/', StationViewSet.as_view({'get': 'media', 'post': 'media_upload'})),
+    path('<str:short_name>/profile/', StationViewSet.as_view({'get': 'profile'})),
+    path('<str:short_name>/logs/', StationViewSet.as_view({'get': 'logs'})),
+    path('<str:short_name>/restart/', StationViewSet.as_view({'post': 'restart'})),
+    path('<str:station_short_name>/media/<int:pk>/',
         StationMediaItemViewSet.as_view({
             'get': 'retrieve',
             'patch': 'partial_update',
             'delete': 'destroy',
         }),
     ),
+    
+    path('', include(router.urls)),
 ]
+

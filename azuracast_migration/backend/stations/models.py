@@ -1,5 +1,7 @@
 from django.db import models
 from django.conf import settings
+from django.utils.functional import cached_property
+from django.core.cache import cache
 
 class Station(models.Model):
     name = models.CharField(max_length=100)
@@ -62,6 +64,7 @@ class Station(models.Model):
     max_bitrate = models.SmallIntegerField(default=0)
     max_mounts = models.SmallIntegerField(default=0)
     max_hls_streams = models.SmallIntegerField(default=0)
+    max_storage_gb = models.IntegerField(default=5, help_text="Station specific storage quota in GB")
     
     branding_config = models.JSONField(
         default=dict, 
@@ -99,11 +102,35 @@ class Station(models.Model):
     ]
     plan = models.CharField(max_length=50, choices=PLAN_CHOICES, default='free')
     
+    subscription = models.ForeignKey(
+        'billing.Subscription', 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True, 
+        related_name='stations'
+    )
+    
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return self.name
+
+    def get_cached_metadata(self):
+        cache_key = f"station_metadata_{self.id}"
+        metadata = cache.get(cache_key)
+        if metadata is None:
+            metadata = {
+                'name': self.name,
+                'short_name': self.short_name,
+                'description': self.description,
+                'genre': self.genre,
+                'stream_url': self.stream_url,
+                'logo_url': self.logo.url if self.logo else self.logo_external_url,
+                'is_streamer_live': self.is_streamer_live,
+            }
+            cache.set(cache_key, metadata, 3600)
+        return metadata
 
     def save(self, *args, **kwargs):
         if not self.radio_base_dir:
@@ -111,12 +138,24 @@ class Station(models.Model):
             from django.conf import settings
             base = getattr(settings, 'MEDIA_ROOT', '/app/media')
             self.radio_base_dir = os.path.join(base, 'stations', self.short_name)
+        
+        cache.delete(f"station_metadata_{self.id}")
         super().save(*args, **kwargs)
 
     class Meta:
         db_table = 'station'
         permissions = [
-            ('manage_station', 'Can manage station'),
+            ('manage_station', 'Peut tout gérer sur la station'),
+            ('manage_station_profile', 'Peut gérer le profil de la station'),
+            ('manage_station_media', 'Peut gérer les médias'),
+            ('manage_station_playlists', 'Peut gérer les playlists'),
+            ('manage_station_streamers', 'Peut gérer les streamers'),
+            ('manage_station_mounts', 'Peut gérer les points de montage'),
+            ('manage_station_remotes', 'Peut gérer les remotes'),
+            ('manage_station_webhooks', 'Peut gérer les webhooks'),
+            ('manage_station_podcasts', 'Peut gérer les podcasts'),
+            ('manage_station_hls', 'Peut gérer le HLS'),
+            ('manage_station_analytics', 'Peut voir les statistiques'),
         ]
 
 class StationPlaylist(models.Model):
@@ -249,6 +288,33 @@ class StationAdvertisement(models.Model):
 
     class Meta:
         db_table = 'station_advertisements'
+
+class GlobalCampaign(models.Model):
+    name = models.CharField(max_length=255)
+    description = models.TextField(blank=True)
+    
+    media_url = models.URLField(max_length=500, null=True, blank=True)
+    
+    stations = models.ManyToManyField(Station, related_name='global_campaigns')
+    
+    is_active = models.BooleanField(default=True)
+    play_interval = models.SmallIntegerField(default=15, help_text="Inject every X minutes in all target stations")
+    
+    # Advertiser info
+    advertiser_name = models.CharField(max_length=255, blank=True)
+    total_budget = models.DecimalField(max_digits=15, decimal_places=2, default=0)
+    
+    start_date = models.DateTimeField()
+    end_date = models.DateTimeField()
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Global: {self.name}"
+
+    class Meta:
+        db_table = 'global_campaigns'
 
 class StationSchedule(models.Model):
     station = models.ForeignKey(Station, on_delete=models.CASCADE, related_name='schedules', null=True, blank=True)

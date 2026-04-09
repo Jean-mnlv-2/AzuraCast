@@ -4,12 +4,13 @@ whitenoise
 djangorestframework
 djangorestframework-simplejwt
 django-cors-headers
-psycopg2-binary
+psycopg2
 python-decouple
 requests
 drf-spectacular
 celery
 redis
+django-redis
 mutagen
 python-magic
 ffmpeg-python

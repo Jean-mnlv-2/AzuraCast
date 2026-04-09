@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { useTranslation } from 'react-i18next';
 import Modal from '../../../components/ui/Modal';
 import Button from '../../../components/ui/Button';
 import Input from '../../../components/ui/Input';
 import Select from '../../../components/ui/Select';
-import { Save, Info, Volume2, Shield, Settings2 } from 'lucide-react';
+import { Save, Info, Settings2 } from 'lucide-react';
 
 interface MountEditModalProps {
   isOpen: boolean;
@@ -21,7 +20,6 @@ const MountEditModal: React.FC<MountEditModalProps> = ({
   mount,
   isLoading = false 
 }) => {
-  const { t } = useTranslation();
   const [formData, setFormData] = useState<any>({});
 
   useEffect(() => {

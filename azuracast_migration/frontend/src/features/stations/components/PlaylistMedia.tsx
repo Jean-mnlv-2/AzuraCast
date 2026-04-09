@@ -72,6 +72,30 @@ const PlaylistMedia: React.FC = () => {
     },
   });
 
+  const handleDragStart = (e: React.DragEvent, media: any) => {
+    e.dataTransfer.setData('application/json', JSON.stringify(media));
+  };
+
+  const handleDropToPlaylist = (e: React.DragEvent) => {
+    e.preventDefault();
+    const media = JSON.parse(e.dataTransfer.getData('application/json'));
+    if (!currentMedia.find(m => m.id === media.id)) {
+      manageMediaMutation.mutate({ mediaId: media.id, action: 'add' });
+    }
+  };
+
+  const handleDropFromPlaylist = (e: React.DragEvent) => {
+    e.preventDefault();
+    const media = JSON.parse(e.dataTransfer.getData('application/json'));
+    if (currentMedia.find(m => m.id === media.id)) {
+      manageMediaMutation.mutate({ mediaId: media.id, action: 'remove' });
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+  };
+
   if (isPlaylistLoading) {
     return (
       <div className="d-flex justify-content-center py-5">
@@ -106,12 +130,17 @@ const PlaylistMedia: React.FC = () => {
       <div className="row g-4">
         {/* Left: Current Media in Playlist */}
         <div className="col-lg-6">
-          <div className="bw-section p-0 overflow-hidden">
+          <div 
+            className="bw-section p-0 overflow-hidden h-100"
+            onDragOver={handleDragOver}
+            onDrop={handleDropToPlaylist}
+          >
             <div className="p-4 border-bottom bg-light-soft">
               <h5 className="fw-800 text-main mb-0 d-flex align-items-center gap-2">
                 <Music size={20} className="text-primary" />
                 Médias dans la playlist ({currentMedia.length})
               </h5>
+              <p className="smaller text-muted-soft mt-1 mb-0">Glissez des fichiers ici pour les ajouter</p>
             </div>
             <div className="table-responsive" style={{ maxHeight: '600px' }}>
               <table className="table table-hover align-middle mb-0">
@@ -130,7 +159,11 @@ const PlaylistMedia: React.FC = () => {
                     </tr>
                   ) : (
                     currentMedia.map((media) => (
-                      <tr key={media.id}>
+                      <tr 
+                        key={media.id} 
+                        draggable 
+                        onDragStart={(e) => handleDragStart(e, media)}
+                      >
                         <td className="ps-4">
                           <p className="fw-700 text-main mb-0">{media.title || media.path_short.split('/').pop()}</p>
                           <span className="text-muted-soft smaller fw-600">{media.artist || 'Artiste inconnu'}</span>
@@ -156,12 +189,16 @@ const PlaylistMedia: React.FC = () => {
 
         {/* Right: Available Media */}
         <div className="col-lg-6">
-          <div className="bw-section p-0 overflow-hidden">
+          <div 
+            className="bw-section p-0 overflow-hidden h-100"
+            onDragOver={handleDragOver}
+            onDrop={handleDropFromPlaylist}
+          >
             <div className="p-4 border-bottom bg-light-soft">
               <div className="d-flex justify-content-between align-items-center mb-3">
                 <h5 className="fw-800 text-main mb-0">Médias disponibles</h5>
               </div>
-              <div className="position-relative">
+              <div className="position-relative mb-2">
                 <Search className="position-absolute top-50 start-0 translate-middle-y ms-3 text-muted opacity-50" size={18} />
                 <input 
                   type="text" 
@@ -171,6 +208,7 @@ const PlaylistMedia: React.FC = () => {
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
               </div>
+              <p className="smaller text-muted-soft mb-0">Glissez des fichiers ici pour les retirer de la playlist</p>
             </div>
             <div className="table-responsive" style={{ maxHeight: '600px' }}>
               <table className="table table-hover align-middle mb-0">
@@ -189,7 +227,11 @@ const PlaylistMedia: React.FC = () => {
                     </tr>
                   ) : (
                     availableMedia.map((media) => (
-                      <tr key={media.id}>
+                      <tr 
+                        key={media.id} 
+                        draggable 
+                        onDragStart={(e) => handleDragStart(e, media)}
+                      >
                         <td className="ps-4">
                           <p className="fw-700 text-main mb-0">{media.title || media.path_short.split('/').pop()}</p>
                           <span className="text-muted-soft smaller fw-600">{media.artist || 'Artiste inconnu'}</span>

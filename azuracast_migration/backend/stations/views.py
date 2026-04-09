@@ -9,8 +9,9 @@ from django.db.models import Q
 from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from rest_framework.throttling import UserRateThrottle
 from guardian.shortcuts import assign_perm, get_objects_for_user
-from .models import Station, StationPlaylist, StationPlaylistFolder, StationStreamer, StationSchedule, StationMount, StationRemote, StationHlsStream, SftpUser, StationAdvertisement
+from .models import Station, StationPlaylist, StationPlaylistFolder, StationStreamer, StationSchedule, StationMount, StationRemote, StationHlsStream, SftpUser, StationAdvertisement, GlobalCampaign
 from .serializers import (
     StationSerializer, 
     StationPlaylistSerializer, 
@@ -21,12 +22,44 @@ from .serializers import (
     StationRemoteSerializer,
     StationHlsStreamSerializer,
     SftpUserSerializer,
-    StationAdvertisementSerializer
+    StationAdvertisementSerializer,
+    GlobalCampaignSerializer
 )
 from bantuwave.emails import send_radio_creation_email
-from .permissions import IsStationManager, IsStationViewer
+from .permissions import (
+    IsStationManager, 
+    IsStationViewer, 
+    CanManageStationProfile, 
+    CanManageMedia, 
+    CanManagePlaylists, 
+    CanManageStreamers, 
+    CanManageMounts, 
+    CanManageRemotes, 
+    CanManageWebhooks, 
+    CanManagePodcasts, 
+    CanManageHls, 
+    CanViewAnalytics
+)
+
+from users.permissions import IsBantuWaveAdmin
+
+class GlobalCampaignViewSet(viewsets.ModelViewSet):
+    queryset = GlobalCampaign.objects.all()
+    serializer_class = GlobalCampaignSerializer
+    permission_classes = [IsBantuWaveAdmin]
+    required_action = 'manage_global_campaigns'
+
+    def get_queryset(self):
+
+        if self.request.user.is_superuser or self.request.user.groups.filter(name='Ad Manager').exists():
+            return self.queryset
+        return self.queryset.none()
+
+class StationThrottle(UserRateThrottle):
+    rate = '60/minute'
 
 class StationViewSet(viewsets.ModelViewSet):
+    throttle_classes = [StationThrottle]
     """
     API endpoint qui permet de voir ou d'éditer les stations de radio.
     """
@@ -34,23 +67,52 @@ class StationViewSet(viewsets.ModelViewSet):
     serializer_class = StationSerializer
     lookup_field = 'short_name'
 
+    def get_serializer_class(self):
+        if self.action == 'history':
+            from media.serializers import SongHistorySerializer
+            return SongHistorySerializer
+        return StationSerializer
+
     def get_permissions(self):
         if self.action in ['list', 'retrieve', 'profile']:
             return [permissions.IsAuthenticated(), IsStationViewer()]
-        return [permissions.IsAuthenticated(), IsStationManager()]
+        if self.action in ['media', 'media_mkdir', 'media_rename', 'media_move', 'media_delete_folder', 'media_delete_file', 'media_upload', 'media_import', 'import_status', 'sync_media', 'media_assign_folder_to_playlist']:
+            return [permissions.IsAuthenticated(), CanManageMedia()]
+        if self.action in ['hls_streams']:
+            return [permissions.IsAuthenticated(), CanManageHls()]
+        if self.action in ['sftp_users']:
+            return [permissions.IsAuthenticated(), CanManageMounts()]
+        if self.action in ['history']:
+            return [permissions.IsAuthenticated(), IsStationViewer()]
+        if self.action in ['write_config', 'restart', 'stop', 'logs']:
+            return [permissions.IsAuthenticated(), IsStationManager()]
+        return [permissions.IsAuthenticated(), CanManageStationProfile()]
 
     def get_queryset(self):
         user = self.request.user
         if user.is_superuser:
-            return Station.objects.all().order_by('-created_at')
+            return Station.objects.all().select_related(
+                'creator', 'subscription', 'media_storage_location'
+            ).prefetch_related(
+                'playlists', 'streamers', 'mounts'
+            ).order_by('-created_at')
             
         from guardian.shortcuts import get_objects_for_user
         from django.db.models import Q
         
-        guardian_qs = get_objects_for_user(user, 'stations.view_station', klass=Station)
-        creator_qs = Station.objects.filter(creator=user)
+        base_qs = Station.objects.all().select_related(
+            'creator', 'subscription', 'media_storage_location'
+        ).prefetch_related(
+            'playlists', 'streamers', 'mounts'
+        )
+
+        guardian_qs = get_objects_for_user(user, 'stations.view_station', klass=base_qs)
         
-        return (guardian_qs | creator_qs).distinct().order_by('-created_at')
+        creator_qs = base_qs.filter(creator=user)
+        
+        hierarchy_qs = base_qs.filter(creator__creator=user)
+        
+        return (guardian_qs | creator_qs | hierarchy_qs).distinct().order_by('-created_at')
 
     def perform_create(self, serializer):
 
@@ -148,6 +210,12 @@ class StationViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'])
     def restart(self, request, short_name=None):
         station = self.get_object()
+        
+        if station.subscription and station.subscription.status in ['past_due', 'suspended']:
+            return Response({
+                'error': 'Station suspendue pour cause d\'impayé. Veuillez régulariser votre situation.'
+            }, status=status.HTTP_402_PAYMENT_REQUIRED)
+
         if not request.user.has_perm('stations.manage_station', station):
             return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
         
@@ -217,16 +285,20 @@ class StationViewSet(viewsets.ModelViewSet):
         from media.services import ensure_station_media_storage, safe_media_path
 
         name = (request.data.get('name') or '').strip()
+        path = (request.data.get('path') or '').strip()
+        
         if not name or '/' in name or '\\' in name or name in ('.', '..'):
             return Response({'error': 'Invalid folder name'}, status=status.HTTP_400_BAD_REQUEST)
 
         loc = ensure_station_media_storage(station)
         try:
-            target = safe_media_path(loc.path, name)
+            full_rel_path = os.path.join(path, name) if path else name
+            target = safe_media_path(loc.path, full_rel_path)
         except ValueError:
             return Response({'error': 'Invalid path'}, status=status.HTTP_400_BAD_REQUEST)
+        
         os.makedirs(target, exist_ok=True)
-        return Response({'status': 'created', 'path': name})
+        return Response({'status': 'created', 'path': full_rel_path.replace('\\', '/')})
 
     @action(detail=True, methods=['post'], url_path='media/rename')
     def media_rename(self, request, short_name=None):
@@ -341,6 +413,8 @@ class StationViewSet(viewsets.ModelViewSet):
         from media.tasks import sync_media_directory
 
         upload = request.FILES.get('file')
+        path = request.data.get('path', '') # Optionnel : dossier de destination
+        
         if not upload:
             return Response({'error': 'File is required'}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -348,10 +422,13 @@ class StationViewSet(viewsets.ModelViewSet):
         rel_name = os.path.basename(upload.name)
         if not rel_name or rel_name in ('.', '..'):
             return Response({'error': 'Invalid file name'}, status=status.HTTP_400_BAD_REQUEST)
+        
         try:
-            dest_abs = safe_media_path(loc.path, rel_name)
+            full_rel_path = os.path.join(path, rel_name) if path else rel_name
+            dest_abs = safe_media_path(loc.path, full_rel_path)
         except ValueError:
             return Response({'error': 'Invalid path'}, status=status.HTTP_400_BAD_REQUEST)
+            
         os.makedirs(os.path.dirname(dest_abs), exist_ok=True)
         with open(dest_abs, 'wb+') as dest:
             for chunk in upload.chunks():
@@ -360,6 +437,101 @@ class StationViewSet(viewsets.ModelViewSet):
         rel = os.path.relpath(dest_abs, os.path.abspath(loc.path)).replace('\\', '/')
         sync_media_directory.delay(station.id)
         return Response({'status': 'uploaded', 'path': rel}, status=status.HTTP_202_ACCEPTED)
+
+    @action(detail=True, methods=['post'], url_path='media/move')
+    def media_move(self, request, short_name=None):
+        """Move a file or directory to a new location (Drag & Drop support)."""
+        station = self.get_object()
+        if not request.user.has_perm('stations.manage_station', station):
+            return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
+
+        from media.services import ensure_station_media_storage, safe_media_path
+        from media.models import StationMedia
+
+        source_path = request.data.get('source_path')
+        dest_folder = request.data.get('dest_folder', '') # Nouveau dossier parent
+
+        if not source_path:
+            return Response({'error': 'source_path is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        loc = ensure_station_media_storage(station)
+        try:
+            source_abs = safe_media_path(loc.path, source_path)
+            # Calcul du nouveau chemin relatif
+            filename = os.path.basename(source_path)
+            new_rel_path = os.path.join(dest_folder, filename) if dest_folder else filename
+            dest_abs = safe_media_path(loc.path, new_rel_path)
+        except ValueError:
+            return Response({'error': 'Invalid path'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if not os.path.exists(source_abs):
+            return Response({'error': 'Source does not exist'}, status=status.HTTP_404_NOT_FOUND)
+        
+        if os.path.exists(dest_abs):
+            return Response({'error': 'Destination already exists'}, status=status.HTTP_400_BAD_REQUEST)
+
+        os.makedirs(os.path.dirname(dest_abs), exist_ok=True)
+        shutil.move(source_abs, dest_abs)
+
+        # Mise à jour DB pour fichiers
+        if os.path.isfile(dest_abs):
+            StationMedia.objects.filter(storage_location=loc, path=source_path).update(
+                path=new_rel_path.replace('\\', '/'), 
+                path_short=new_rel_path.replace('\\', '/')
+            )
+        else:
+            # Mise à jour récursive pour dossiers
+            media_to_update = StationMedia.objects.filter(storage_location=loc, path__startswith=source_path)
+            updates = []
+            for m in media_to_update:
+                if m.path == source_path or m.path.startswith(source_path + '/'):
+                    m.path = m.path.replace(source_path, new_rel_path.replace('\\', '/'), 1)
+                    m.path_short = m.path
+                    updates.append(m)
+            if updates:
+                StationMedia.objects.bulk_update(updates, ['path', 'path_short'], batch_size=500)
+
+        return Response({'status': 'moved', 'new_path': new_rel_path.replace('\\', '/')})
+
+    @action(detail=True, methods=['post'], url_path='media/assign-folder-to-playlist')
+    def media_assign_folder_to_playlist(self, request, short_name=None):
+        """Assign all media in a folder to a playlist."""
+        station = self.get_object()
+        folder_path = request.data.get('folder_path', '')
+        playlist_id = request.data.get('playlist_id')
+
+        if not playlist_id:
+            return Response({'error': 'playlist_id is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        playlist = get_object_or_404(StationPlaylist, pk=playlist_id, station=station)
+        
+        from media.models import StationMedia
+        
+        # Clean path prefix
+        prefix = folder_path.replace('\\', '/')
+        if prefix and not prefix.endswith('/'):
+            prefix += '/'
+
+        if prefix:
+            media_to_add = StationMedia.objects.filter(
+                storage_location=station.media_storage_location,
+                path__startswith=prefix
+            )
+        else:
+            # Root folder
+            media_to_add = StationMedia.objects.filter(
+                storage_location=station.media_storage_location
+            )
+
+        count = media_to_add.count()
+        playlist.media_items.add(*media_to_add)
+
+        return Response({
+            'status': 'assigned',
+            'count': count,
+            'playlist': playlist.name,
+            'folder': folder_path or 'Root'
+        })
 
     @action(detail=True, methods=['get'])
     def profile(self, request, short_name=None):
@@ -549,7 +721,7 @@ class StationViewSet(viewsets.ModelViewSet):
 class StationPlaylistViewSet(viewsets.ModelViewSet):
     queryset = StationPlaylist.objects.all()
     serializer_class = StationPlaylistSerializer
-    permission_classes = [permissions.IsAuthenticated, IsStationManager]
+    permission_classes = [permissions.IsAuthenticated, CanManagePlaylists]
 
     def get_queryset(self):
         return self.queryset.filter(station__short_name=self.kwargs['station_short_name'])
@@ -638,7 +810,7 @@ class StationPlaylistViewSet(viewsets.ModelViewSet):
 class StationPlaylistFolderViewSet(viewsets.ModelViewSet):
     queryset = StationPlaylistFolder.objects.all()
     serializer_class = StationPlaylistFolderSerializer
-    permission_classes = [permissions.IsAuthenticated, IsStationManager]
+    permission_classes = [permissions.IsAuthenticated, CanManagePlaylists]
 
     def get_queryset(self):
         return self.queryset.filter(
@@ -658,7 +830,7 @@ class StationPlaylistFolderViewSet(viewsets.ModelViewSet):
 class StationStreamerViewSet(viewsets.ModelViewSet):
     queryset = StationStreamer.objects.all()
     serializer_class = StationStreamerSerializer
-    permission_classes = [permissions.IsAuthenticated, IsStationManager]
+    permission_classes = [permissions.IsAuthenticated, CanManageStreamers]
 
     def get_queryset(self):
         return self.queryset.filter(station__short_name=self.kwargs['station_short_name'])
@@ -670,7 +842,7 @@ class StationStreamerViewSet(viewsets.ModelViewSet):
 class StationScheduleViewSet(viewsets.ModelViewSet):
     queryset = StationSchedule.objects.all()
     serializer_class = StationScheduleSerializer
-    permission_classes = [permissions.IsAuthenticated, IsStationManager]
+    permission_classes = [permissions.IsAuthenticated, CanManagePlaylists]
 
     def get_queryset(self):
         if 'station_short_name' in self.kwargs:
@@ -692,7 +864,7 @@ class StationScheduleViewSet(viewsets.ModelViewSet):
 class StationHlsStreamViewSet(viewsets.ModelViewSet):
     queryset = StationHlsStream.objects.all()
     serializer_class = StationHlsStreamSerializer
-    permission_classes = [permissions.IsAuthenticated, IsStationManager]
+    permission_classes = [permissions.IsAuthenticated, CanManageHls]
 
     def get_queryset(self):
         return self.queryset.filter(station__short_name=self.kwargs['station_short_name'])
@@ -706,7 +878,7 @@ from .permissions import CanViewSftpUsers
 class SftpUserViewSet(viewsets.ModelViewSet):
     queryset = SftpUser.objects.all()
     serializer_class = SftpUserSerializer
-    permission_classes = [permissions.IsAuthenticated, IsStationManager, CanViewSftpUsers]
+    permission_classes = [permissions.IsAuthenticated, CanManageMounts, CanViewSftpUsers]
 
     def get_station(self):
         return get_object_or_404(Station, short_name=self.kwargs['station_short_name'])
@@ -721,7 +893,7 @@ class SftpUserViewSet(viewsets.ModelViewSet):
 class StationAdvertisementViewSet(viewsets.ModelViewSet):
     queryset = StationAdvertisement.objects.all()
     serializer_class = StationAdvertisementSerializer
-    permission_classes = [permissions.IsAuthenticated, IsStationManager]
+    permission_classes = [permissions.IsAuthenticated, CanManagePlaylists]
 
     def get_queryset(self):
         return StationAdvertisement.objects.filter(station__short_name=self.kwargs['station_short_name'])
@@ -733,7 +905,7 @@ class StationAdvertisementViewSet(viewsets.ModelViewSet):
 class StationMountViewSet(viewsets.ModelViewSet):
     queryset = StationMount.objects.all()
     serializer_class = StationMountSerializer
-    permission_classes = [permissions.IsAuthenticated, IsStationManager]
+    permission_classes = [permissions.IsAuthenticated, CanManageMounts]
 
     def get_queryset(self):
         return self.queryset.filter(station__short_name=self.kwargs['station_short_name'])
@@ -745,7 +917,7 @@ class StationMountViewSet(viewsets.ModelViewSet):
 class StationRemoteViewSet(viewsets.ModelViewSet):
     queryset = StationRemote.objects.all()
     serializer_class = StationRemoteSerializer
-    permission_classes = [permissions.IsAuthenticated, IsStationViewer]
+    permission_classes = [permissions.IsAuthenticated, CanManageRemotes]
 
     def get_queryset(self):
         return self.queryset.filter(station__short_name=self.kwargs['station_short_name'])

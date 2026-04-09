@@ -4,7 +4,15 @@ import api from '../../../api/axios';
 import { useParams, Link } from 'react-router-dom';
 import { ListMusic, Plus, Settings2, Trash2, Shuffle, Repeat, Calendar, Music } from 'lucide-react';
 import PlaylistEditModal from './PlaylistEditModal';
+import VisualScheduler from './VisualScheduler';
 import Button from '../../../components/ui/Button';
+
+interface ScheduleItem {
+  id: number;
+  start_time: number;
+  end_time: number;
+  days: string;
+}
 
 interface Playlist {
   id: number;
@@ -14,6 +22,7 @@ interface Playlist {
   playback_order: string;
   weight: number;
   source: string;
+  schedule_items: ScheduleItem[];
 }
 
 const StationPlaylists: React.FC = () => {
@@ -58,6 +67,16 @@ const StationPlaylists: React.FC = () => {
   const handleEditClick = (playlist: Playlist) => {
     setSelectedPlaylist(playlist);
     setIsEditModalOpen(true);
+  };
+
+  const handleSaveSchedule = (playlistId: number, schedules: ScheduleItem[]) => {
+    const playlist = playlists?.find(p => p.id === playlistId);
+    if (playlist) {
+      savePlaylistMutation.mutate({ 
+        ...playlist,
+        schedule_items: schedules 
+      });
+    }
   };
 
   const handleCreateClick = () => {
@@ -205,36 +224,11 @@ const StationPlaylists: React.FC = () => {
             </table>
           </div>
         ) : (
-          <div className="p-5 text-center">
-            <div className="bg-primary-soft text-primary rounded-circle d-inline-flex p-4 mb-4 shadow-sm">
-              <Calendar size={48} />
-            </div>
-            <h4 className="fw-800 text-main mb-3">Planificateur Visuel BantuWave</h4>
-            <p className="text-muted-soft max-width-md mx-auto mb-4">
-              Ici, vous pouvez visualiser la programmation de votre station sur une grille hebdomadaire.
-              Les playlists programmées s'afficheront sous forme de blocs de couleur.
-            </p>
-            <div className="d-flex flex-column gap-2 max-width-md mx-auto">
-              {playlists?.filter(p => (p as any).schedule_items?.length > 0).map(p => (
-                <div key={p.id} className="bw-section p-3 d-flex justify-content-between align-items-center border-start border-4 border-danger">
-                  <div className="text-start">
-                    <h6 className="fw-bold mb-1">{p.name}</h6>
-                    {(p as any).schedule_items.map((s: any, i: number) => (
-                      <span key={i} className="badge bg-light-soft text-muted smaller me-2">
-                        {Math.floor(s.start_time / 100)}h{String(s.start_time % 100).padStart(2, '0')} - {Math.floor(s.end_time / 100)}h{String(s.end_time % 100).padStart(2, '0')}
-                      </span>
-                    ))}
-                  </div>
-                  <Button variant="light" size="sm" icon={<Settings2 size={14} />} onClick={() => handleEditClick(p)}>Gérer</Button>
-                </div>
-              ))}
-              {playlists?.filter(p => (p as any).schedule_items?.length > 0).length === 0 && (
-                <div className="alert bg-light-soft border-0 text-muted small">
-                  Aucune playlist n'a encore d'horaire programmé. Modifiez une playlist pour ajouter des horaires.
-                </div>
-              )}
-            </div>
-          </div>
+          <VisualScheduler 
+            playlists={playlists || []} 
+            onEdit={handleEditClick} 
+            onSaveSchedule={handleSaveSchedule}
+          />
         )}
       </div>
 

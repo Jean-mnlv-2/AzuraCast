@@ -121,7 +121,38 @@
       "name": "Full Name",
       "email": "Email Address",
       "password": "Password",
-      "is_superuser": "Super Administrator Rights"
+      "is_superuser": "Super Administrator Rights",
+      "permissions": {
+        "title": "Permissions for {{name}}",
+        "add_title": "Add Permission",
+        "station_label": "Station",
+        "station_placeholder": "Choose a station...",
+        "permission_label": "Permission",
+        "view_only": "View Only",
+        "manage_full": "Manage Full",
+        "types": {
+          "view_station": "View Station",
+          "manage_station": "Manage Station (Full)",
+          "manage_station_profile": "Manage Profile",
+          "manage_station_media": "Manage Media",
+          "manage_station_playlists": "Manage Playlists",
+          "manage_station_streamers": "Manage Streamers",
+          "manage_station_mounts": "Manage Mounts",
+          "manage_station_remotes": "Manage Remotes",
+          "manage_station_webhooks": "Manage Webhooks",
+          "manage_station_podcasts": "Manage Podcasts",
+          "manage_station_hls": "Manage HLS",
+          "manage_station_analytics": "View Analytics"
+        },
+        "current_permissions": "Current Permissions",
+        "table": {
+          "station": "Station",
+          "permissions": "Permissions",
+          "actions": "Actions"
+        },
+        "none": "No specific permissions",
+        "add_button": "Add"
+      }
     }
   },
   "admin": {

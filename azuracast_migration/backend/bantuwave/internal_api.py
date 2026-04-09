@@ -98,9 +98,27 @@ def listener_event(request):
         return Response({'status': 'missing_data'}, status=status.HTTP_400_BAD_REQUEST)
 
     from now_playing.tasks import update_listeners_task
-    update_listeners_task.delay(station_id, event)
+    update_listeners_task.delay(station_id, event, request.data.get('ip'))
+    return Response({'status': 'ok'})
 
-    return Response({'status': 'received'})
+
+@api_view(['POST'])
+@permission_classes([permissions.AllowAny])
+def station_heartbeat(request, station_id):
+    """
+    Periodic heartbeat from Liquidsoap to ensure the station is alive.
+    Updates 'has_started' and 'last_seen_at' (if added to model).
+    """
+    if not _internal_token_valid(request):
+        return Response({'status': 'denied'}, status=status.HTTP_403_FORBIDDEN)
+
+    try:
+        station = Station.objects.get(id=station_id)
+        station.has_started = True
+        station.save(update_fields=['has_started'])
+        return Response({'status': 'alive'})
+    except Station.DoesNotExist:
+        return Response({'status': 'not_found'}, status=status.HTTP_404_NOT_FOUND)
 
 
 @api_view(['POST'])

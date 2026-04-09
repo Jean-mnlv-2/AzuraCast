@@ -25,11 +25,34 @@ const MediaImportModal: React.FC<MediaImportModalProps> = ({
   const [headers, setHeaders] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   
-  const [importStatus, setImportStatus] = useState<'idle' | 'processing' | 'success' | 'error'>('idle');
+  const [importStatus, setImportStatus] = useState<'idle' | 'mapping' | 'processing' | 'success' | 'error'>('idle');
+  const [columnMapping, setColumnMapping] = useState<Record<string, string>>({});
   const [progress, setProgress] = useState(0);
   const [result, setResult] = useState<{ created: number, updated: number } | null>(null);
-  
   const pollingInterval = useRef<any>(null);
+
+  const REQUIRED_FIELDS = [
+    { key: 'path', label: 'Chemin du fichier (obligatoire)', examples: 'path, file, filename' },
+    { key: 'title', label: 'Titre', examples: 'title, Titre, Name' },
+    { key: 'artist', label: 'Artiste', examples: 'artist, Artiste' },
+    { key: 'album', label: 'Album', examples: 'album' },
+    { key: 'genre', label: 'Genre', examples: 'genre' },
+    { key: 'isrc', label: 'ISRC', examples: 'isrc' },
+  ];
+
+  const autoMapColumns = useCallback((sheetHeaders: string[]) => {
+    const mapping: Record<string, string> = {};
+    sheetHeaders.forEach(header => {
+      const h = header.toLowerCase().trim();
+      if (['path', 'file', 'fichier', 'filename', 'filepath'].includes(h)) mapping['path'] = header;
+      if (['title', 'titre', 'name', 'nom'].includes(h)) mapping['title'] = header;
+      if (['artist', 'artiste'].includes(h)) mapping['artist'] = header;
+      if (['album'].includes(h)) mapping['album'] = header;
+      if (['genre'].includes(h)) mapping['genre'] = header;
+      if (['isrc'].includes(h)) mapping['isrc'] = header;
+    });
+    setColumnMapping(mapping);
+  }, []);
 
   const parseFile = useCallback((file: File) => {
     const reader = new FileReader();
@@ -40,11 +63,10 @@ const MediaImportModal: React.FC<MediaImportModalProps> = ({
         const firstSheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[firstSheetName];
         
-        // Conversion en JSON
         const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
         
         if (jsonData.length > 0) {
-          const sheetHeaders = jsonData[0] as string[];
+          const sheetHeaders = (jsonData[0] as any[]).filter(h => h != null).map(String);
           const sheetRows = jsonData.slice(1).map((row: any) => {
             const obj: any = {};
             sheetHeaders.forEach((header, index) => {
@@ -55,15 +77,17 @@ const MediaImportModal: React.FC<MediaImportModalProps> = ({
 
           setHeaders(sheetHeaders);
           setPreviewData(sheetRows.slice(0, 5));
-          (window as any)._fullImportData = sheetRows; 
+          (window as any)._fullImportData = sheetRows;
+          autoMapColumns(sheetHeaders);
+          setImportStatus('mapping');
         }
       } catch (err) {
-        setError(t('media.import.error_parsing'));
+        setError("Erreur lors de la lecture du fichier. Assurez-vous qu'il s'agit d'un fichier Excel ou CSV valide.");
         console.error(err);
       }
     };
     reader.readAsArrayBuffer(file);
-  }, [t]);
+  }, [autoMapColumns]);
 
   const onDrop = useCallback((acceptedFiles: File[], fileRejections: any[]) => {
     if (fileRejections.length > 0) {
@@ -117,8 +141,24 @@ const MediaImportModal: React.FC<MediaImportModalProps> = ({
   };
 
   const handleImport = async () => {
-    const data = (window as any)._fullImportData;
-    if (!data || data.length === 0) return;
+    const rawData = (window as any)._fullImportData;
+    if (!rawData || rawData.length === 0) return;
+
+    // Appliquer le mappage des colonnes
+    const data = rawData.map((row: any) => {
+      const mappedRow: any = {};
+      Object.entries(columnMapping).forEach(([targetKey, sourceHeader]) => {
+        if (sourceHeader) {
+          mappedRow[targetKey] = row[sourceHeader];
+        }
+      });
+      return mappedRow;
+    }).filter((row: any) => row.path); // S'assurer que le chemin est présent
+
+    if (data.length === 0) {
+      setError("Aucune donnée valide trouvée après mappage. La colonne 'Chemin' est obligatoire.");
+      return;
+    }
 
     try {
         setImportStatus('processing');
@@ -202,6 +242,13 @@ const MediaImportModal: React.FC<MediaImportModalProps> = ({
             </div>
 
             <div className="p-4">
+              {error && (
+                <div className="alert alert-danger-soft d-flex align-items-center gap-2 mb-4 border-0">
+                  <AlertCircle size={18} />
+                  <span className="small fw-600">{error}</span>
+                </div>
+              )}
+
               {importStatus === 'processing' ? (
                 <div className="py-5 text-center">
                   <Loader2 size={48} className="text-primary animate-spin mx-auto mb-4" />
@@ -225,30 +272,79 @@ const MediaImportModal: React.FC<MediaImportModalProps> = ({
                   </p>
                   <Button variant="success" onClick={handleClose}>Fermer</Button>
                 </div>
-              ) : (
-                <>
+              ) : importStatus === 'mapping' ? (
+                <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
+                  <div className="d-flex align-items-center gap-2 mb-4 text-primary">
+                    <TableIcon size={20} />
+                    <h5 className="fw-800 mb-0">Configuration du mappage des colonnes</h5>
+                  </div>
+                  
+                  <p className="text-muted-soft small mb-4 fw-600">
+                    Associez les colonnes de votre fichier aux champs correspondants dans BantuWave.
+                  </p>
+
+                  <div className="row g-4 mb-5">
+                    {REQUIRED_FIELDS.map((field) => (
+                      <div key={field.key} className="col-md-6">
+                        <label className="form-label smaller fw-800 text-uppercase ls-1 text-muted-soft">
+                          {field.label}
+                        </label>
+                        <select 
+                          className={`form-select bg-surface border-0 shadow-none ${!columnMapping[field.key] && field.key === 'path' ? 'is-invalid border-danger' : ''}`}
+                          value={columnMapping[field.key] || ''}
+                          onChange={(e) => setColumnMapping({ ...columnMapping, [field.key]: e.target.value })}
+                        >
+                          <option value="">-- Ignorer ce champ --</option>
+                          {headers.map(h => (
+                            <option key={h} value={h}>{h}</option>
+                          ))}
+                        </select>
+                        <span className="smaller text-muted-soft opacity-70 mt-1 d-block">Exemples : {field.examples}</span>
+                      </div>
+                    ))}
+                  </div>
+
                   <div className="d-flex align-items-center gap-2 mb-3 text-primary">
                     <TableIcon size={18} />
-                    <h6 className="fw-800 mb-0">Prévisualisation des données</h6>
+                    <h6 className="fw-800 mb-0">Prévisualisation (premières lignes)</h6>
                   </div>
-                  <div className="table-responsive rounded-3 border">
+                  <div className="table-responsive rounded-4 border overflow-hidden mb-4">
                     <table className="table table-sm mb-0">
-                      <thead className="bg-light-soft">
+                      <thead className="bg-light-soft border-bottom">
                         <tr>
-                          {headers.map((h) => <th key={h} className="px-3 py-2 smaller fw-700 text-uppercase ls-1">{h}</th>)}
+                          {headers.map((h) => (
+                            <th key={h} className="px-3 py-2 smaller fw-800 text-uppercase ls-1 text-main">
+                              {h}
+                              {Object.values(columnMapping).includes(h) && (
+                                <span className="ms-2 badge bg-primary-soft text-primary">Mappé</span>
+                              )}
+                            </th>
+                          ))}
                         </tr>
                       </thead>
                       <tbody>
                         {previewData.map((row, idx) => (
-                          <tr key={idx}>
+                          <tr key={idx} className="hover-bg-light-soft transition-all">
                             {headers.map((h) => <td key={h} className="px-3 py-2 small text-muted-soft">{row[h] || '-'}</td>)}
                           </tr>
                         ))}
                       </tbody>
                     </table>
                   </div>
-                </>
-              )}
+
+                  <div className="d-flex justify-content-end gap-3 pt-3 border-top mt-4">
+                    <Button variant="light" onClick={reset}>Annuler</Button>
+                    <Button 
+                      variant="danger" 
+                      onClick={handleImport}
+                      disabled={!columnMapping['path']}
+                      icon={<Check size={18} />}
+                    >
+                      Démarrer l'importation
+                    </Button>
+                  </div>
+                </div>
+              ) : null}
             </div>
           </div>
         )}

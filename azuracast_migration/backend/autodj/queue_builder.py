@@ -6,6 +6,7 @@ from typing import List, Optional
 
 from django.utils import timezone
 from django.db.models import Q
+from django.core.cache import cache
 from stations.models import Station, StationPlaylist, StationAdvertisement
 from media.models import StationMedia, Song
 from .models import StationQueue, StationRequest
@@ -54,13 +55,17 @@ class QueueBuilder:
             
         # 2. Get recently played song history for duplicate prevention
         history_minutes = station.backend_config.get('duplicate_prevention_time_range', 15) if station.backend_config else 15
-        threshold = expected_play_time - datetime.timedelta(minutes=history_minutes)
+        cache_key = f"station_{station.id}_recent_history_{history_minutes}"
+        recent_history_set = cache.get(cache_key)
         
-        recent_history = StationQueue.objects.filter(
-            station=station,
-            timestamp_played__gte=threshold
-        ).values_list('media__unique_id', flat=True)
-        recent_history_set = set(recent_history)
+        if recent_history_set is None:
+            threshold = expected_play_time - datetime.timedelta(minutes=history_minutes)
+            recent_history = StationQueue.objects.filter(
+                station=station,
+                timestamp_played__gte=threshold
+            ).values_list('media__unique_id', flat=True)
+            recent_history_set = set(recent_history)
+            cache.set(cache_key, recent_history_set, 60) # Cache for 1 minute
 
         # 3. Define playlist types by priority (matching original)
         playlist_types_by_priority = [

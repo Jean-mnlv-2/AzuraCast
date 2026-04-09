@@ -24,11 +24,17 @@ import {
   Globe,
   Activity,
   Rss,
-  Book
+  Book,
+  Layers,
+  DollarSign,
+  ClipboardList,
+  Megaphone,
+  Library,
 } from 'lucide-react';
 import { useAuthStore } from '../store/useAuthStore';
 import { useThemeStore } from '../store/useThemeStore';
 import Button from '../components/ui/Button';
+import logo from '../assets/logo.png';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -39,7 +45,10 @@ interface NavigationItem {
   href: string;
   icon: any;
   adminOnly?: boolean;
+  superAdminOnly?: boolean;
   isBack?: boolean;
+  requiredPermission?: string;
+  requiredRole?: string | string[];
 }
 
 const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
@@ -49,6 +58,16 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
   const { logout, user } = useAuthStore();
   const { isDarkMode, toggleDarkMode } = useThemeStore();
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+
+  const userRoles = user?.groups?.map(g => g.name) || [];
+
+  const hasRole = (role: string | string[]) => {
+    if (user?.is_superuser) return true;
+    if (Array.isArray(role)) {
+      return role.some(r => userRoles.includes(r));
+    }
+    return userRoles.includes(role);
+  };
 
   const station_short_name = params.station_short_name;
   const isStationView = !!station_short_name;
@@ -71,41 +90,86 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
   const globalNavigation: NavigationItem[] = [
     { name: t('nav.dashboard'), href: '/', icon: LayoutDashboard },
     { name: t('nav.stations'), href: '/stations', icon: Radio },
-    { name: t('nav.overview'), href: '/admin', icon: Activity, adminOnly: true },
-    { name: t('nav.all_stations'), href: '/admin/stations', icon: Globe, adminOnly: true },
-    { name: t('nav.users'), href: '/admin/users', icon: Users, adminOnly: true },
-    { name: t('nav.settings'), href: '/admin/settings', icon: Settings, adminOnly: true },
+    { 
+      name: "SaaS Manager", 
+      href: '/admin', 
+      icon: Activity, 
+      requiredRole: ['SuperAdmins', 'Commercial & Billing', 'Tech Support', 'Ad Manager', 'Content Curator']
+    },
+    { 
+      name: "Gestion Flotte", 
+      href: '/admin/fleet', 
+      icon: Layers, 
+      requiredRole: ['SuperAdmins', 'Tech Support']
+    },
+    { 
+      name: "Facturation", 
+      href: '/admin/billing', 
+      icon: DollarSign, 
+      requiredRole: ['SuperAdmins', 'Commercial & Billing']
+    },
+    { 
+      name: "Régie Pub", 
+      href: '/admin/ads', 
+      icon: Megaphone, 
+      requiredRole: ['SuperAdmins', 'Ad Manager']
+    },
+    { 
+      name: "Médiathèque", 
+      href: '/admin/library', 
+      icon: Library, 
+      requiredRole: ['SuperAdmins', 'Content Curator']
+    },
+    { name: "Audit Logs", href: '/admin/audit', icon: ClipboardList, superAdminOnly: true },
+    { name: t('nav.users'), href: '/admin/users', icon: Users, superAdminOnly: true },
+    { name: t('nav.settings'), href: '/admin/settings', icon: Settings, superAdminOnly: true },
     { name: t('nav.documentation'), href: '/admin/docs', icon: Book },
   ];
 
   const stationNavigation: NavigationItem[] = [
     { name: t('nav.back_to_dashboard'), href: '/', icon: ChevronLeft, isBack: true },
-    { name: t('nav.profile'), href: `/station/${station_short_name}`, icon: LayoutDashboard },
-    { name: t('nav.media'), href: `/station/${station_short_name}/media`, icon: Music },
-    { name: t('nav.playlists'), href: `/station/${station_short_name}/playlists`, icon: ListMusic },
-    { name: t('nav.streamers'), href: `/station/${station_short_name}/streamers`, icon: UserCheck },
-    { name: t('nav.webhooks'), href: `/station/${station_short_name}/webhooks`, icon: Share2 },
-    { name: t('nav.mounts'), href: `/station/${station_short_name}/mounts`, icon: Zap },
-    { name: t('nav.remotes'), href: `/station/${station_short_name}/remotes`, icon: Globe },
-    { name: t('nav.hls_streams'), href: `/station/${station_short_name}/hls`, icon: Activity },
-    { name: t('nav.sftp_users'), href: `/station/${station_short_name}/sftp`, icon: HardDrive },
-    { name: t('nav.analytics'), href: `/station/${station_short_name}/analytics`, icon: BarChart3 },
-    { name: t('nav.podcasts'), href: `/station/${station_short_name}/podcasts`, icon: Rss },
-    { name: 'Web-DJ Live', href: `/station/${station_short_name}/web-dj`, icon: Mic },
-    { name: t('stations.configuration'), href: `/station/${station_short_name}/settings`, icon: Settings },
+    { name: t('nav.profile'), href: `/station/${station_short_name}`, icon: LayoutDashboard, requiredPermission: 'view_station' },
+    { name: t('nav.media'), href: `/station/${station_short_name}/media`, icon: Music, requiredPermission: 'manage_station_media' },
+    { name: t('nav.playlists'), href: `/station/${station_short_name}/playlists`, icon: ListMusic, requiredPermission: 'manage_station_playlists' },
+    { name: t('nav.streamers'), href: `/station/${station_short_name}/streamers`, icon: UserCheck, requiredPermission: 'manage_station_streamers' },
+    { name: t('nav.webhooks'), href: `/station/${station_short_name}/webhooks`, icon: Share2, requiredPermission: 'manage_station_webhooks' },
+    { name: t('nav.mounts'), href: `/station/${station_short_name}/mounts`, icon: Zap, requiredPermission: 'manage_station_mounts' },
+    { name: t('nav.remotes'), href: `/station/${station_short_name}/remotes`, icon: Globe, requiredPermission: 'manage_station_remotes' },
+    { name: t('nav.hls_streams'), href: `/station/${station_short_name}/hls`, icon: Activity, requiredPermission: 'manage_station_hls' },
+    { name: t('nav.sftp_users'), href: `/station/${station_short_name}/sftp`, icon: HardDrive, requiredPermission: 'manage_station_mounts' }, // SFTP often linked to mounts
+    { name: t('nav.analytics'), href: `/station/${station_short_name}/analytics`, icon: BarChart3, requiredPermission: 'manage_station_analytics' },
+    { name: t('nav.podcasts'), href: `/station/${station_short_name}/podcasts`, icon: Rss, requiredPermission: 'manage_station_podcasts' },
+    { name: 'Web-DJ Live', href: `/station/${station_short_name}/web-dj`, icon: Mic, requiredPermission: 'manage_station_streamers' },
+    { name: t('stations.configuration'), href: `/station/${station_short_name}/settings`, icon: Settings, requiredPermission: 'manage_station_profile' },
   ];
 
   const navigation = isStationView ? stationNavigation : globalNavigation;
-  const filteredNavigation = navigation.filter(item => !item.adminOnly || user?.is_superuser);
+  const filteredNavigation = navigation.filter(item => {
+    if (item.superAdminOnly) return !!user?.is_superuser;
+    if (item.requiredRole) return hasRole(item.requiredRole);
+    if (item.adminOnly) return !!(user?.is_superuser || user?.is_staff);
+    
+    // Station specific permissions
+    if (isStationView && item.requiredPermission) {
+      if (user?.is_superuser) return true;
+      
+      const userStationPerms = user?.station_permissions?.[station_short_name || ''] || [];
+      
+      // 'manage_station' gives access to everything
+      if (userStationPerms.includes('manage_station')) return true;
+      
+      return userStationPerms.includes(item.requiredPermission);
+    }
+    
+    return true;
+  });
 
   return (
     <div className="min-vh-100 d-flex dashboard-wrapper">
       {/* Sidebar Desktop */}
       <aside className="sidebar d-none d-lg-flex flex-column" style={{ width: '280px', minWidth: '280px' }}>
         <div className="p-4 mb-3 d-flex align-items-center gap-3">
-          <div className="bg-danger rounded-3 p-2 shadow-sm">
-            <Radio className="text-white" size={24} />
-          </div>
+          <img src={logo} alt="BantuWave Logo" style={{ height: '48px', width: 'auto' }} className="shadow-sm rounded-1" />
           <span className="fw-800 fs-4 tracking-tight text-white">BantuWave</span>
         </div>
 

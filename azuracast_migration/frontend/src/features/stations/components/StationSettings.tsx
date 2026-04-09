@@ -41,6 +41,8 @@ const StationSettings: React.FC = () => {
     is_enabled: true,
     enable_hls: false,
     enable_on_demand: false,
+    enable_public_page: true,
+    logo_external_url: '',
     branding_config: {
       primary_color: '#1976D2',
       secondary_color: '#D32F2F',
@@ -98,6 +100,8 @@ const StationSettings: React.FC = () => {
         is_enabled: station.is_enabled !== undefined ? station.is_enabled : true,
         enable_hls: station.enable_hls || false,
         enable_on_demand: station.enable_on_demand || false,
+        enable_public_page: station.enable_public_page !== undefined ? station.enable_public_page : true,
+        logo_external_url: station.logo_external_url || '',
         branding_config: station.branding_config || {
           primary_color: '#1976D2',
           secondary_color: '#D32F2F',

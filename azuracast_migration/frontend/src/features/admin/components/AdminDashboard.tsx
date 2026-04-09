@@ -2,36 +2,44 @@ import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { 
-  Radio, 
-  Activity, 
   Cpu, 
-  Database, 
-  HardDrive, 
   Users, 
   Zap, 
-  Server,
-  ArrowUpRight
+  DollarSign,
+  TrendingUp,
+  AlertTriangle
 } from 'lucide-react';
 import api from '../../../api/axios';
 import Card from '../../../components/ui/Card';
 
 interface AdminStats {
+  business: {
+    mrr: number;
+    total_revenue: number;
+    active_subscriptions: number;
+    churn_rate: number;
+    currency: string;
+  };
   stations: {
     total: number;
     active: number;
     suspended: number;
+    trial: number;
   };
   server: {
     cpu: number;
     ram: number;
     disk: number;
-    docker_cpu: number;
-    docker_ram: number;
+    load_avg: [number, number, number];
   };
   bandwidth: {
     total_listeners: number;
-    outgoing_mbps: number;
+    outgoing_gbps: number;
   };
+  alerts: Array<{
+    level: 'critical' | 'warning' | 'info';
+    message: string;
+  }>;
 }
 
 const AdminDashboard: React.FC = () => {
@@ -43,7 +51,7 @@ const AdminDashboard: React.FC = () => {
       const response = await api.get('/settings/admin/stats/');
       return response.data;
     },
-    refetchInterval: 10000,
+    refetchInterval: 30000,
   });
 
   if (isLoading) {
@@ -58,136 +66,134 @@ const AdminDashboard: React.FC = () => {
 
   return (
     <div className="container-fluid px-0">
-      <div className="mb-5">
-        <h1 className="fw-800 text-main mb-1">Vue d'Ensemble</h1>
-        <p className="text-muted-soft">État global du serveur et des stations BantuWave</p>
+      <div className="d-flex justify-content-between align-items-end mb-5">
+        <div>
+          <h1 className="fw-800 text-main mb-1">BantuWave Super Admin</h1>
+          <p className="text-muted-soft">Business & Infrastructure Control Center • Douala Node</p>
+        </div>
+        <div className="d-flex gap-2">
+          <span className="badge bg-success-soft text-success p-2 rounded-3 d-flex align-items-center gap-2">
+            <div className="bg-success rounded-circle" style={{ width: '8px', height: '8px' }}></div>
+            Système Opérationnel
+          </span>
+        </div>
       </div>
 
-      {/* Row 1: Key Metrics */}
+      {/* KPIs Business Section */}
+      <h3 className="fw-bold mb-4 d-flex align-items-center gap-2">
+        <DollarSign size={24} className="text-main" />
+        Business KPIs (Monétisation)
+      </h3>
       <div className="row g-4 mb-5">
-        <div className="col-md-3">
-          <Card className="h-100 border-0 shadow-sm bg-primary-soft">
-            <div className="d-flex justify-content-between align-items-start mb-3">
-              <div className="bg-primary text-white p-2 rounded-3 shadow-sm">
-                <Radio size={20} />
-              </div>
-              <span className="badge bg-white text-primary rounded-pill px-2 py-1 small fw-bold">Stations</span>
-            </div>
-            <h2 className="fw-800 text-main mb-1">{stats?.stations.total}</h2>
-            <div className="d-flex align-items-center gap-2 small">
-              <span className="text-success fw-bold">{stats?.stations.active} Actives</span>
-              <span className="text-muted-soft">•</span>
-              <span className="text-danger fw-bold">{stats?.stations.suspended} Suspendues</span>
-            </div>
-          </Card>
-        </div>
-
-        <div className="col-md-3">
-          <Card className="h-100 border-0 shadow-sm bg-danger-soft">
-            <div className="d-flex justify-content-between align-items-start mb-3">
-              <div className="bg-danger text-white p-2 rounded-3 shadow-sm">
-                <Users size={20} />
-              </div>
-              <span className="badge bg-white text-danger rounded-pill px-2 py-1 small fw-bold">Audience</span>
-            </div>
-            <h2 className="fw-800 text-main mb-1">{stats?.bandwidth.total_listeners}</h2>
-            <p className="text-muted-soft small mb-0 d-flex align-items-center gap-1">
-              Auditeurs connectés en direct <ArrowUpRight size={14} />
-            </p>
-          </Card>
-        </div>
-
-        <div className="col-md-3">
-          <Card className="h-100 border-0 shadow-sm bg-info-soft">
-            <div className="d-flex justify-content-between align-items-start mb-3">
-              <div className="bg-info text-white p-2 rounded-3 shadow-sm">
-                <Zap size={20} />
-              </div>
-              <span className="badge bg-white text-info rounded-pill px-2 py-1 small fw-bold">Bande Passante</span>
-            </div>
-            <h2 className="fw-800 text-main mb-1">{stats?.bandwidth.outgoing_mbps} <small className="fs-6">Mbps</small></h2>
-            <p className="text-muted-soft small mb-0">Débit sortant estimé</p>
-          </Card>
-        </div>
-
-        <div className="col-md-3">
-          <Card className="h-100 border-0 shadow-sm bg-warning-soft">
-            <div className="d-flex justify-content-between align-items-start mb-3">
-              <div className="bg-warning text-white p-2 rounded-3 shadow-sm">
-                <Activity size={20} />
-              </div>
-              <span className="badge bg-white text-warning rounded-pill px-2 py-1 small fw-bold">Serveur</span>
-            </div>
-            <h2 className="fw-800 text-main mb-1">{stats?.server.cpu}%</h2>
-            <p className="text-muted-soft small mb-0">Utilisation CPU globale</p>
-          </Card>
-        </div>
-      </div>
-
-      {/* Row 2: Detailed Server Health */}
-      <div className="row g-4">
-        <div className="col-lg-8">
-          <Card title="Santé du Serveur & Docker" icon={<Server size={20} className="text-primary" />}>
-            <div className="row g-4 py-2">
-              <div className="col-md-6">
-                <div className="mb-4">
-                  <div className="d-flex justify-content-between mb-2">
-                    <span className="small fw-bold text-main d-flex align-items-center gap-2"><Cpu size={16} /> CPU (Conteneurs Docker)</span>
-                    <span className="small fw-800 text-primary">{stats?.server.docker_cpu}%</span>
-                  </div>
-                  <div className="progress" style={{ height: '8px' }}>
-                    <div className="progress-bar bg-primary rounded-pill" style={{ width: `${stats?.server.docker_cpu}%` }}></div>
-                  </div>
-                </div>
-                <div>
-                  <div className="d-flex justify-content-between mb-2">
-                    <span className="small fw-bold text-main d-flex align-items-center gap-2"><Database size={16} /> RAM (Conteneurs Docker)</span>
-                    <span className="small fw-800 text-info">{stats?.server.docker_ram}%</span>
-                  </div>
-                  <div className="progress" style={{ height: '8px' }}>
-                    <div className="progress-bar bg-info rounded-pill" style={{ width: `${stats?.server.docker_ram}%` }}></div>
-                  </div>
-                </div>
-              </div>
-              <div className="col-md-6">
-                <div className="mb-4">
-                  <div className="d-flex justify-content-between mb-2">
-                    <span className="small fw-bold text-main d-flex align-items-center gap-2"><HardDrive size={16} /> Espace Disque</span>
-                    <span className="small fw-800 text-warning">{stats?.server.disk}%</span>
-                  </div>
-                  <div className="progress" style={{ height: '8px' }}>
-                    <div className="progress-bar bg-warning rounded-pill" style={{ width: `${stats?.server.disk}%` }}></div>
-                  </div>
-                </div>
-                <div className="p-3 bg-light-soft rounded-3 border border-white">
-                  <p className="smaller text-muted-soft mb-0">
-                    Les statistiques Docker incluent l'ensemble des instances Liquidsoap et Icecast actives.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </Card>
-        </div>
-        
         <div className="col-lg-4">
-          <Card title="Ressources" icon={<Activity size={20} className="text-danger" />}>
-            <ul className="list-group list-group-flush">
-              <li className="list-group-item px-0 py-3 bg-transparent border-bottom border-white border-opacity-10 d-flex justify-content-between align-items-center">
-                <span className="small text-muted-soft">Stations Actives</span>
-                <span className="fw-bold text-main">{stats?.stations.active}</span>
-              </li>
-              <li className="list-group-item px-0 py-3 bg-transparent border-bottom border-white border-opacity-10 d-flex justify-content-between align-items-center">
-                <span className="small text-muted-soft">Listeners / Mbps</span>
-                <span className="fw-bold text-main">{stats?.bandwidth.total_listeners} / {stats?.bandwidth.outgoing_mbps}</span>
-              </li>
-              <li className="list-group-item px-0 py-3 bg-transparent border-0 d-flex justify-content-between align-items-center">
-                <span className="small text-muted-soft">Statut Docker</span>
-                <span className="badge bg-success-soft text-success fw-bold rounded-pill">OPÉRATIONNEL</span>
-              </li>
-            </ul>
+          <Card className="border-0 shadow-sm h-100 overflow-hidden position-relative">
+            <div className="p-1">
+              <div className="text-muted small fw-bold text-uppercase mb-2">Chiffre d'Affaires Mensuel (MRR)</div>
+              <div className="d-flex align-items-center gap-3">
+                <div className="h1 fw-900 mb-0 text-main">
+                  {stats?.business.mrr.toLocaleString()} {stats?.business.currency}
+                </div>
+                <div className="badge bg-success-soft text-success rounded-pill px-2 py-1 small">
+                  <TrendingUp size={12} className="me-1" /> +12%
+                </div>
+              </div>
+            </div>
+            <div className="position-absolute bottom-0 end-0 opacity-10 p-3">
+              <DollarSign size={64} />
+            </div>
+          </Card>
+        </div>
+        <div className="col-lg-4">
+          <Card className="border-0 shadow-sm h-100 overflow-hidden position-relative">
+            <div className="p-1">
+              <div className="text-muted small fw-bold text-uppercase mb-2">Abonnés Actifs</div>
+              <div className="h1 fw-900 mb-0 text-main">{stats?.business.active_subscriptions}</div>
+            </div>
+            <div className="position-absolute bottom-0 end-0 opacity-10 p-3">
+              <Users size={64} />
+            </div>
+          </Card>
+        </div>
+        <div className="col-lg-4">
+          <Card className="border-0 shadow-sm h-100 overflow-hidden position-relative">
+            <div className="p-1">
+              <div className="text-muted small fw-bold text-uppercase mb-2">Taux de Désabonnement (Churn)</div>
+              <div className="h1 fw-900 mb-0 text-danger">{stats?.business.churn_rate}%</div>
+            </div>
+            <div className="position-absolute bottom-0 end-0 opacity-10 p-3">
+              <Zap size={64} />
+            </div>
           </Card>
         </div>
       </div>
+
+      {/* KPIs Technical Section */}
+      <h3 className="fw-bold mb-4 d-flex align-items-center gap-2">
+        <Cpu size={24} className="text-main" />
+        Infrastructure & Audience
+      </h3>
+      <div className="row g-4 mb-5">
+        <div className="col-lg-3">
+          <Card className="border-0 shadow-sm text-center py-4">
+            <div className="text-muted small fw-bold text-uppercase mb-3">Charge CPU Globale</div>
+            <div className={`h2 fw-900 mb-3 ${(stats?.server.cpu ?? 0) > 80 ? 'text-danger' : 'text-main'}`}>
+              {stats?.server.cpu}%
+            </div>
+            <div className="progress rounded-pill" style={{ height: '8px' }}>
+              <div 
+                className={`progress-bar rounded-pill ${(stats?.server.cpu ?? 0) > 80 ? 'bg-danger' : 'bg-primary'}`} 
+                style={{ width: `${stats?.server.cpu}%` }}
+              ></div>
+            </div>
+          </Card>
+        </div>
+        <div className="col-lg-3">
+          <Card className="border-0 shadow-sm text-center py-4">
+            <div className="text-muted small fw-bold text-uppercase mb-3">Mémoire RAM</div>
+            <div className="h2 fw-900 mb-3 text-main">{stats?.server.ram}%</div>
+            <div className="progress rounded-pill" style={{ height: '8px' }}>
+              <div className="progress-bar bg-info rounded-pill" style={{ width: `${stats?.server.ram}%` }}></div>
+            </div>
+          </Card>
+        </div>
+        <div className="col-lg-3">
+          <Card className="border-0 shadow-sm text-center py-4">
+            <div className="text-muted small fw-bold text-uppercase mb-3">Auditeurs Uniques</div>
+            <div className="h2 fw-900 mb-3 text-main">{stats?.bandwidth.total_listeners}</div>
+            <div className="small text-muted">Sur tout le réseau</div>
+          </Card>
+        </div>
+        <div className="col-lg-3">
+          <Card className="border-0 shadow-sm text-center py-4">
+            <div className="text-muted small fw-bold text-uppercase mb-3">Bande Passante (Gbps)</div>
+            <div className="h2 fw-900 mb-3 text-main">{stats?.bandwidth.outgoing_gbps} Gbps</div>
+            <div className="small text-muted">Sortie Temps Réel</div>
+          </Card>
+        </div>
+      </div>
+
+      {/* Alerts Section */}
+      {stats?.alerts && stats.alerts.length > 0 && (
+        <div className="mb-5">
+          <h3 className="fw-bold mb-4 d-flex align-items-center gap-2 text-danger">
+            <AlertTriangle size={24} />
+            Alertes Critiques
+          </h3>
+          <div className="row">
+            <div className="col-12">
+              {stats.alerts.map((alert, i) => (
+                <div key={i} className={`alert alert-${alert.level === 'critical' ? 'danger' : 'warning'} d-flex justify-content-between align-items-center gap-3 border-0 shadow-sm mb-2 py-3 px-4 rounded-4`}>
+                  <div className="d-flex align-items-center gap-3">
+                    <AlertTriangle size={24} />
+                    <span className="fw-bold fs-5">{alert.message}</span>
+                  </div>
+                  <button className="btn btn-sm btn-outline-dark rounded-pill">Détails</button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

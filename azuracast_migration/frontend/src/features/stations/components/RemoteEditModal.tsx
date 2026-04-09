@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { useTranslation } from 'react-i18next';
 import Modal from '../../../components/ui/Modal';
 import Button from '../../../components/ui/Button';
 import Input from '../../../components/ui/Input';
 import Select from '../../../components/ui/Select';
-import { Save, Globe, Link, Zap } from 'lucide-react';
+import { Save } from 'lucide-react';
 
 interface RemoteEditModalProps {
   isOpen: boolean;
@@ -21,7 +20,6 @@ const RemoteEditModal: React.FC<RemoteEditModalProps> = ({
   remote,
   isLoading = false 
 }) => {
-  const { t } = useTranslation();
   const [formData, setFormData] = useState<any>({});
 
   useEffect(() => {

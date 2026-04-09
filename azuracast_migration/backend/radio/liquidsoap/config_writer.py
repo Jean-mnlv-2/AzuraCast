@@ -82,6 +82,13 @@ runtime.gc.set(runtime.gc.get().{{
 
 # Start HTTP API Server
 azuracast.start_http_api()
+
+# Periodic Heartbeat to Backend
+def send_heartbeat() =
+    ignore(http.post("http://backend:8000/api/internal/{self.station.id}/heartbeat/"))
+    5.0
+end
+thread.run(send_heartbeat)
 """)
 
     def write_playlists(self):

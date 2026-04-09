@@ -9,7 +9,7 @@ from rest_framework_simplejwt.views import (
     TokenRefreshView,
 )
 
-from .internal_api import dj_auth, listener_event, metadata_update, playback_event, get_admin_stats, get_station_logs
+from .internal_api import dj_auth, listener_event, metadata_update, playback_event, get_admin_stats, get_station_logs, station_heartbeat
 from .health import health_check
 
 from users.auth_views import MyTokenObtainPairView
@@ -23,6 +23,7 @@ urlpatterns = [
     path('api/internal/playback', playback_event),
     path('api/internal/admin/stats', get_admin_stats),
     path('api/internal/admin/logs', get_station_logs),
+    path('api/internal/<int:station_id>/heartbeat/', station_heartbeat),
     
     # Auth
     path('api/auth/login/', MyTokenObtainPairView.as_view(), name='token_obtain_pair'),

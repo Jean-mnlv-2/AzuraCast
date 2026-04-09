@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { Plus, Shield, Mail, Edit2, Trash2, Search } from 'lucide-react';
+import { Plus, Shield, Mail, Edit2, Trash2, Search, Key, X } from 'lucide-react';
 import api from '../../../api/axios';
 import Card from '../../../components/ui/Card';
 import Button from '../../../components/ui/Button';
 import Input from '../../../components/ui/Input';
 import Modal from '../../../components/ui/Modal';
+import Select from '../../../components/ui/Select';
 
 interface UserData {
   id: number;
@@ -14,6 +15,19 @@ interface UserData {
   name: string;
   is_superuser: boolean;
   is_active: boolean;
+}
+
+interface StationPermission {
+  station_id: number;
+  station_name: string;
+  short_name: string;
+  permissions: string[];
+}
+
+interface Station {
+  id: number;
+  name: string;
+  short_name: string;
 }
 
 const emptyForm = {
@@ -31,6 +45,55 @@ const UserList: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<UserData | null>(null);
   const [form, setForm] = useState(emptyForm);
+
+  // Permission management state
+  const [isPermissionModalOpen, setIsPermissionModalOpen] = useState(false);
+  const [targetUser, setTargetUser] = useState<UserData | null>(null);
+  const [selectedStationId, setSelectedStationId] = useState<number | null>(null);
+  const [selectedPermission, setSelectedPermission] = useState<string>('view_station');
+
+  const availablePermissionTypes = [
+    'view_station', 'manage_station', 'manage_station_profile',
+    'manage_station_media', 'manage_station_playlists', 'manage_station_streamers',
+    'manage_station_mounts', 'manage_station_remotes', 'manage_station_webhooks',
+    'manage_station_podcasts', 'manage_station_hls', 'manage_station_analytics'
+  ];
+
+  const { data: stations } = useQuery<Station[]>({
+    queryKey: ['admin_stations'],
+    queryFn: async () => {
+      const response = await api.get('/stations/');
+      return response.data;
+    },
+    enabled: isPermissionModalOpen,
+  });
+
+  const { data: userPermissions, refetch: refetchUserPermissions } = useQuery<StationPermission[]>({
+    queryKey: ['user_permissions', targetUser?.id],
+    queryFn: async () => {
+      const response = await api.get(`/users/${targetUser?.id}/get_station_permissions/`);
+      return response.data;
+    },
+    enabled: !!targetUser && isPermissionModalOpen,
+  });
+
+  const permissionMutation = useMutation({
+    mutationFn: async ({ action, stationId, permission }: { action: 'add' | 'remove', stationId: number, permission: string }) => {
+      return api.post(`/users/${targetUser?.id}/station_permissions/`, {
+        station_id: stationId,
+        permission: permission,
+        action: action
+      });
+    },
+    onSuccess: () => {
+      refetchUserPermissions();
+    },
+  });
+
+  const openPermissions = (user: UserData) => {
+    setTargetUser(user);
+    setIsPermissionModalOpen(true);
+  };
 
   const openCreate = () => {
     setEditingUser(null);
@@ -171,7 +234,15 @@ const UserList: React.FC = () => {
                   </td>
                   <td className="px-4 py-3 text-end">
                     <div className="d-flex justify-content-end gap-2">
+                      <Button
+                        variant="light"
+                        size="sm"
+                        icon={<Key size={16} />}
+                        title="Permissions"
+                        onClick={() => openPermissions(user)}
+                      />
                       <Button variant="light" size="sm" icon={<Edit2 size={16} />} title={t('common.edit')} onClick={() => openEdit(user)} />
+
                       <Button
                         variant="light"
                         size="sm"
@@ -291,8 +362,116 @@ const UserList: React.FC = () => {
           </div>
         </div>
       </Modal>
+
+      {/* Permission Management Modal */}
+      <Modal
+        isOpen={isPermissionModalOpen}
+        onClose={() => {
+          setIsPermissionModalOpen(false);
+          setTargetUser(null);
+        }}
+        title={t('users.permissions.title', { name: targetUser?.name || targetUser?.email })}
+        size="lg"
+      >
+        <div className="mb-4">
+          <h6 className="fw-bold mb-3">{t('users.permissions.add_title')}</h6>
+          <div className="row g-2 align-items-end">
+            <div className="col-md-5">
+              <label className="form-label small fw-bold">{t('users.permissions.station_label')}</label>
+              <Select
+                options={[
+                  { value: '', label: t('users.permissions.station_placeholder') },
+                  ...(stations?.map(s => ({ value: s.id.toString(), label: s.name })) || [])
+                ]}
+                value={selectedStationId?.toString() || ''}
+                onChange={(e) => setSelectedStationId(e.target.value ? parseInt(e.target.value) : null)}
+              />
+
+            </div>
+            <div className="col-md-4">
+              <label className="form-label small fw-bold">{t('users.permissions.permission_label')}</label>
+              <Select
+                options={availablePermissionTypes.map(p => ({
+                  value: p,
+                  label: t(`users.permissions.types.${p}`)
+                }))}
+                value={selectedPermission}
+                onChange={(e) => setSelectedPermission(e.target.value)}
+              />
+            </div>
+
+            <div className="col-md-3">
+              <Button 
+                variant="danger" 
+                className="w-100" 
+                disabled={!selectedStationId || permissionMutation.isPending}
+                onClick={() => permissionMutation.mutate({ 
+                  action: 'add', 
+                  stationId: selectedStationId!, 
+                  permission: selectedPermission 
+                })}
+              >
+                {t('users.permissions.add_button')}
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        <div className="border-top pt-4">
+          <h6 className="fw-bold mb-3">{t('users.permissions.current_permissions')}</h6>
+          <div className="table-responsive">
+            <table className="table table-sm">
+              <thead>
+                <tr>
+                  <th>{t('users.permissions.table.station')}</th>
+                  <th>{t('users.permissions.table.permissions')}</th>
+                  <th className="text-end">{t('users.permissions.table.actions')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {userPermissions?.map(up => (
+                  <tr key={up.station_id}>
+                    <td>{up.station_name}</td>
+                    <td>
+                      <div className="d-flex flex-wrap gap-1">
+                        {up.permissions.map(p => (
+                          <span key={p} className="badge bg-light text-dark border d-flex align-items-center gap-1">
+                            {t(`users.permissions.types.${p}`)}
+                            <Button 
+                              variant="link" 
+                              size="sm" 
+                              className="text-danger p-0 ms-1 border-0"
+                              onClick={() => permissionMutation.mutate({ 
+                                action: 'remove', 
+                                stationId: up.station_id, 
+                                permission: p 
+                              })}
+                              title={`${t('common.delete')} ${p}`}
+                            >
+                              <X size={12} />
+                            </Button>
+                          </span>
+                        ))}
+                      </div>
+                    </td>
+                    <td className="text-end">
+                      {/* Actions column can be empty now as we have the X in the badge or kept for bulk actions */}
+                    </td>
+                  </tr>
+                ))}
+                {(!userPermissions || userPermissions.length === 0) && (
+                  <tr>
+                    <td colSpan={3} className="text-center py-3 text-muted">{t('users.permissions.none')}</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };
+
 
 export default UserList;

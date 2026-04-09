@@ -6,7 +6,6 @@ import {
   Plus, 
   Settings, 
   Trash2, 
-  MoreVertical,
   Activity,
   Radio,
   ExternalLink

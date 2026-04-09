@@ -37,7 +37,7 @@ class ContainerManager:
                     "STATION_ID": station.id,
                     "API_URL": "http://backend:8000/api/internal/",
                 },
-                network="bantuwave_network",
+                network="bantuwave_default",
                 restart_policy={"Name": "always"}
             )
             return True

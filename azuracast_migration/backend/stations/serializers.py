@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Station, StationPlaylist, StationPlaylistFolder, StationStreamer, StationSchedule, StationMount, StationRemote, Relay, StationHlsStream, SftpUser, StationAdvertisement
+from .models import Station, StationPlaylist, StationPlaylistFolder, StationStreamer, StationSchedule, StationMount, StationRemote, Relay, StationHlsStream, SftpUser, StationAdvertisement, GlobalCampaign
 from media.serializers import StorageLocationSerializer
 
 class RelaySerializer(serializers.ModelSerializer):
@@ -67,8 +67,13 @@ class StationPlaylistFolderSerializer(serializers.ModelSerializer):
         fields = '__all__'
         read_only_fields = ('station', 'playlist')
 
+class GlobalCampaignSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = GlobalCampaign
+        fields = '__all__'
+
 class StationPlaylistSerializer(serializers.ModelSerializer):
-    schedule_items = StationScheduleSerializer(many=True, read_only=True)
+    schedule_items = StationScheduleSerializer(many=True, required=False)
     folders = StationPlaylistFolderSerializer(many=True, read_only=True)
     station = serializers.PrimaryKeyRelatedField(read_only=True)
 
@@ -77,8 +82,27 @@ class StationPlaylistSerializer(serializers.ModelSerializer):
         fields = '__all__'
         read_only_fields = ('created_at', 'updated_at', 'station')
 
+    def create(self, validated_data):
+        schedule_data = validated_data.pop('schedule_items', [])
+        playlist = StationPlaylist.objects.create(**validated_data)
+        for schedule in schedule_data:
+            schedule.pop('station', None)
+            StationSchedule.objects.create(playlist=playlist, station=playlist.station, **schedule)
+        return playlist
+
+    def update(self, instance, validated_data):
+        schedule_data = validated_data.pop('schedule_items', None)
+        instance = super().update(instance, validated_data)
+        if schedule_data is not None:
+            instance.schedule_items.all().delete()
+            for schedule in schedule_data:
+                schedule.pop('id', None)
+                schedule.pop('station', None)
+                StationSchedule.objects.create(playlist=instance, station=instance.station, **schedule)
+        return instance
+
 class StationStreamerSerializer(serializers.ModelSerializer):
-    schedule_items = StationScheduleSerializer(many=True, read_only=True)
+    schedule_items = StationScheduleSerializer(many=True, required=False)
     station = serializers.PrimaryKeyRelatedField(read_only=True)
 
     class Meta:
@@ -88,6 +112,25 @@ class StationStreamerSerializer(serializers.ModelSerializer):
         extra_kwargs = {
             'streamer_password': {'write_only': True}
         }
+
+    def create(self, validated_data):
+        schedule_data = validated_data.pop('schedule_items', [])
+        streamer = StationStreamer.objects.create(**validated_data)
+        for schedule in schedule_data:
+            schedule.pop('station', None)
+            StationSchedule.objects.create(streamer=streamer, station=streamer.station, **schedule)
+        return streamer
+
+    def update(self, instance, validated_data):
+        schedule_data = validated_data.pop('schedule_items', None)
+        instance = super().update(instance, validated_data)
+        if schedule_data is not None:
+            instance.schedule_items.all().delete()
+            for schedule in schedule_data:
+                schedule.pop('id', None)
+                schedule.pop('station', None)
+                StationSchedule.objects.create(streamer=instance, station=instance.station, **schedule)
+        return instance
 
 class StationAdvertisementSerializer(serializers.ModelSerializer):
     schedule_items = StationScheduleSerializer(many=True, required=False)
@@ -160,6 +203,7 @@ class StationAdvertisementSerializer(serializers.ModelSerializer):
         schedule_data = validated_data.pop('schedule_items', [])
         ad = StationAdvertisement.objects.create(**validated_data)
         for schedule in schedule_data:
+            schedule.pop('station', None)
             StationSchedule.objects.create(advertisement=ad, station=ad.station, **schedule)
         return ad
 
@@ -169,12 +213,15 @@ class StationAdvertisementSerializer(serializers.ModelSerializer):
         if schedule_data is not None:
             instance.schedule_items.all().delete()
             for schedule in schedule_data:
+                schedule.pop('id', None)
+                schedule.pop('station', None)
                 StationSchedule.objects.create(advertisement=instance, station=instance.station, **schedule)
         return instance
 
 from users.serializers import UserSerializer
 
 class StationSerializer(serializers.ModelSerializer):
+    short_name = serializers.SlugField(required=False, allow_blank=True)
     creator_details = UserSerializer(source='creator', read_only=True)
     playlists = StationPlaylistSerializer(many=True, read_only=True)
     streamers = StationStreamerSerializer(many=True, read_only=True)
@@ -208,3 +255,25 @@ class StationSerializer(serializers.ModelSerializer):
             'advertisements', 'mounts', 'remotes', 'hls_streams', 'sftp_users'
         ]
         read_only_fields = ('created_at', 'updated_at', 'creator', 'has_started')
+
+    def validate(self, data):
+        if not data.get('short_name') and data.get('name'):
+            from django.utils.text import slugify
+            import uuid
+            base_slug = slugify(data['name'])
+            if not base_slug:
+                base_slug = "station"
+            
+            slug = base_slug
+            counter = 1
+            while Station.objects.filter(short_name=slug).exists():
+                slug = f"{base_slug}-{counter}"
+                counter += 1
+            data['short_name'] = slug
+        return data
+
+    def create(self, validated_data):
+        request = self.context.get('request')
+        if request and request.user:
+            validated_data['creator'] = request.user
+        return super().create(validated_data)

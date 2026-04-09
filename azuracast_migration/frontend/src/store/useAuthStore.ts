@@ -10,6 +10,9 @@ interface AuthState {
     email: string;
     name: string | null;
     is_superuser?: boolean;
+    is_staff?: boolean;
+    groups?: Array<{ id: number, name: string }>;
+    station_permissions?: Record<string, string[]>;
   } | null;
   isLoading: boolean;
   isAuthenticated: boolean;

@@ -47,6 +47,7 @@ INSTALLED_APPS = [
     'audit',
     'podcasts',
     'settings',
+    'billing',
     'django_extensions',
 ]
 
@@ -96,6 +97,9 @@ TEMPLATES = [
 WSGI_APPLICATION = 'bantuwave.wsgi.application'
 ASGI_APPLICATION = 'bantuwave.asgi.application'
 
+USE_X_FORWARDED_HOST = True
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
 CHANNEL_LAYERS = {
     'default': {
         'BACKEND': 'channels_redis.core.RedisChannelLayer',
@@ -103,6 +107,16 @@ CHANNEL_LAYERS = {
             'hosts': [config('REDIS_URL', default='redis://localhost:6379/0')],
         },
     },
+}
+
+CACHES = {
+    'default': {
+        'BACKEND': 'django_redis.cache.RedisCache',
+        'LOCATION': config('REDIS_URL', default='redis://localhost:6379/0'),
+        'OPTIONS': {
+            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+        }
+    }
 }
 
 if USE_S3:
@@ -158,6 +172,8 @@ SPECTACULAR_SETTINGS = {
     'DESCRIPTION': 'Plateforme de diffusion radio (Migration AzuraCast)',
     'VERSION': '1.0.0',
     'SERVE_INCLUDE_SCHEMA': False,
+    'COMPONENT_SPLIT_PATCH': True,
+    'COMPONENT_SPLIT_REQUEST': True,
     'SWAGGER_UI_SETTINGS': {
         'deepLinking': True,
         'persistAuthorization': True,

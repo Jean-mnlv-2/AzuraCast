@@ -12,6 +12,7 @@ class UserSerializer(serializers.ModelSerializer):
     group_ids = serializers.PrimaryKeyRelatedField(
         many=True, write_only=True, queryset=Group.objects.all(), source='groups'
     )
+    station_permissions = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -19,9 +20,31 @@ class UserSerializer(serializers.ModelSerializer):
             'id', 'email', 'name', 'phone', 'account_type', 
             'organization_name', 'structure_type', 'address', 'country',
             'locale', 'show_24_hour_time', 'groups', 'group_ids', 
-            'is_staff', 'is_superuser', 'is_active', 'created_at', 'updated_at'
+            'is_staff', 'is_superuser', 'is_active', 'created_at', 'updated_at',
+            'station_permissions'
         ]
-        read_only_fields = ['created_at', 'updated_at']
+        read_only_fields = ['created_at', 'updated_at', 'station_permissions']
+
+    def get_station_permissions(self, obj):
+        from guardian.shortcuts import get_objects_for_user
+        from stations.models import Station
+        
+        available_permissions = [
+            'view_station', 'manage_station', 'manage_station_profile',
+            'manage_station_media', 'manage_station_playlists', 'manage_station_streamers',
+            'manage_station_mounts', 'manage_station_remotes', 'manage_station_webhooks',
+            'manage_station_podcasts', 'manage_station_hls', 'manage_station_analytics'
+        ]
+        
+        perms_map = {}
+        for perm in available_permissions:
+            stations = get_objects_for_user(obj, f'stations.{perm}', klass=Station)
+            for s in stations:
+                if s.short_name not in perms_map:
+                    perms_map[s.short_name] = []
+                perms_map[s.short_name].append(perm)
+        
+        return perms_map
 
 class UserAdminUpdateSerializer(serializers.ModelSerializer):
     group_ids = serializers.PrimaryKeyRelatedField(

@@ -178,8 +178,8 @@ const StationAnalytics: React.FC = () => {
                 <h5 className="fw-800 text-main mb-4 d-flex align-items-center gap-2">
                   <TrendingUp size={20} className="text-primary" /> Évolution (24h)
                 </h5>
-                <div style={{ width: '100%', height: 350 }}>
-                  <ResponsiveContainer width="100%" height="100%">
+                <div style={{ width: '100%', height: 350, minHeight: 350 }}>
+                  <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                     <LineChart data={stats}>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--bw-border)" />
                       <XAxis dataKey="moment" hide />
@@ -271,8 +271,8 @@ const StationAnalytics: React.FC = () => {
               <h5 className="fw-800 text-main mb-4 d-flex align-items-center gap-2">
                 <Zap size={20} className="text-warning" /> Consommation Bitrates
               </h5>
-              <div style={{ width: '100%', height: 300 }}>
-                <ResponsiveContainer width="100%" height="100%">
+              <div style={{ width: '100%', height: 300, minHeight: 300 }}>
+                <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                   <PieChart>
                     <Pie data={bitrateData} innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value">
                       {bitrateData.map((_, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}

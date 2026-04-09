@@ -85,7 +85,13 @@ const PlaylistEditModal: React.FC<PlaylistEditModalProps> = ({
 
    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
      const { name, value, type } = e.target as any;
-     const val = type === 'checkbox' ? (e.target as HTMLInputElement).checked : value;
+     let val = type === 'checkbox' ? (e.target as HTMLInputElement).checked : value;
+     
+     if (type === 'number') {
+       val = parseInt(val, 10);
+       if (isNaN(val)) val = 0;
+     }
+     
      setFormData((prev: any) => ({ ...prev, [name]: val }));
    };
  

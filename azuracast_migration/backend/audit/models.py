@@ -1,9 +1,12 @@
 from django.db import models
 from auditlog.registry import auditlog
+from stations.models import Station
+from users.models import User
+from billing.models import Plan, Subscription, Transaction, Coupon
 
-# This file is intentionally left blank.
-# Models are in other apps.
-
-# Example of registering a model for auditing
-# from stations.models import Station
-# auditlog.register(Station)
+auditlog.register(Station)
+auditlog.register(User)
+auditlog.register(Plan)
+auditlog.register(Subscription)
+auditlog.register(Transaction)
+auditlog.register(Coupon)

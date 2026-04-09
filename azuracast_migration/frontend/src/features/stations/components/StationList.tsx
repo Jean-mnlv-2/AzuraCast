@@ -10,10 +10,8 @@ import {
   Square,
   RefreshCw, 
   MoreVertical,
-  Music,
   ExternalLink,
   Globe,
-  Languages,
   Activity,
   Image as ImageIcon,
   Link as LinkIcon
@@ -52,11 +50,29 @@ const StationList: React.FC = () => {
     description: '',
     url: '',
     stream_url: '',
-    genre: '',
-    language: 'fr',
+    genre: 'Musique',
+    language: 'Français',
     country: 'Cameroun',
     logo_external_url: ''
   });
+
+  const generateSlug = (name: string) => {
+    return name
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+  };
+
+  const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newName = e.target.value;
+    setFormData(prev => ({
+      ...prev,
+      name: newName,
+      short_name: generateSlug(newName)
+    }));
+  };
 
   const createMutation = useMutation({
     mutationFn: (data: any) => {
@@ -94,9 +110,17 @@ const StationList: React.FC = () => {
 
   const handleCreateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.name) return;
+    const name = formData.name.trim();
+    if (!name) return;
     
-    const short_name = formData.short_name || formData.name.toLowerCase().replace(/ /g, '-').replace(/[^\w-]+/g, '');
+    const generatedShortName = name
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+
+    const short_name = formData.short_name.trim() || generatedShortName || `station-${Date.now()}`;
     
     let dataToSubmit: any;
     if (logoFile) {
@@ -354,7 +378,7 @@ const StationList: React.FC = () => {
                     label={t('stations.create_modal.name')} 
                     placeholder="ex: MNLV Radio"
                     value={formData.name}
-                    onChange={e => setFormData({...formData, name: e.target.value})}
+                    onChange={handleNameChange}
                     required
                     icon={<Radio size={16} className="text-muted-soft" />}
                   />
@@ -400,22 +424,37 @@ const StationList: React.FC = () => {
                   </div>
                 </div>
                 <div className="col-md-4">
-                  <Input 
-                    label="Catégorie" 
-                    placeholder="Musique / Actualités"
-                    value={formData.genre}
-                    onChange={e => setFormData({...formData, genre: e.target.value})}
-                    icon={<Music size={16} className="text-muted-soft" />}
-                  />
+                  <div className="mb-0">
+                    <label className="form-label fw-700 text-main small text-uppercase ls-1 mb-2">Catégorie</label>
+                    <select 
+                      className="form-select border-0 bg-light-soft rounded-3 py-2"
+                      value={formData.genre}
+                      onChange={e => setFormData({...formData, genre: e.target.value})}
+                    >
+                      <option value="Musique">Musique</option>
+                      <option value="Actualités">Actualités</option>
+                      <option value="Talk Show">Talk Show</option>
+                      <option value="Sport">Sport</option>
+                      <option value="Culture">Culture</option>
+                      <option value="Religieux">Religieux</option>
+                    </select>
+                  </div>
                 </div>
                 <div className="col-md-4">
-                  <Input 
-                    label="Langue principale" 
-                    placeholder="Français"
-                    value={formData.language}
-                    onChange={e => setFormData({...formData, language: e.target.value})}
-                    icon={<Languages size={16} className="text-muted-soft" />}
-                  />
+                  <div className="mb-0">
+                    <label className="form-label fw-700 text-main small text-uppercase ls-1 mb-2">Langue principale</label>
+                    <select 
+                      className="form-select border-0 bg-light-soft rounded-3 py-2"
+                      value={formData.language}
+                      onChange={e => setFormData({...formData, language: e.target.value})}
+                    >
+                      <option value="Français">Français</option>
+                      <option value="English">English</option>
+                      <option value="Español">Español</option>
+                      <option value="Português">Português</option>
+                      <option value="العربية">العربية</option>
+                    </select>
+                  </div>
                 </div>
                 <div className="col-md-4">
                   <CountrySelect

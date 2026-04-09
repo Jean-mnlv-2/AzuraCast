@@ -13,7 +13,9 @@ import {
   Music,
   Folder,
   ChevronRight,
-  FileText
+  FileText,
+  ArrowLeft,
+  Type
 } from 'lucide-react';
 import axios from '../../../api/axios';
 import Button from '../../../components/ui/Button';
@@ -21,15 +23,20 @@ import Input from '../../../components/ui/Input';
 import Modal from '../../../components/ui/Modal';
 import MediaEditModal from './MediaEditModal';
 import MediaImportModal from './MediaImportModal';
+import TitleManager from './TitleManager';
 
 interface MediaFile {
   id: number;
   path_short: string;
+  path: string;
   artist: string;
   title: string;
   album: string;
   length_text: string;
   bitrate: number;
+  type?: 'directory' | 'file';
+  name?: string;
+  playlists?: number[];
   genre?: string;
   isrc?: string;
   amplify?: number;
@@ -52,6 +59,7 @@ const StationMedia: React.FC = () => {
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [selectedMedia, setSelectedMedia] = useState<MediaFile | null>(null);
 
+  const [activeTab, setActiveTab] = useState<'files' | 'titles'>('files');
   const [currentPath, setCurrentPath] = useState('');
 
   const [isNewFolderModalOpen, setIsNewFolderModalOpen] = useState(false);
@@ -68,103 +76,7 @@ const StationMedia: React.FC = () => {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
 
-  const createFolderMutation = useMutation({
-    mutationFn: async (name: string) => {
-      const fullPath = currentPath ? `${currentPath}/${name}` : name;
-      return axios.post(`/stations/${station_short_name}/media/mkdir/`, { name: fullPath });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['media', station_short_name] });
-      setIsNewFolderModalOpen(false);
-      setNewFolderName('');
-    },
-  });
-
-  const renameMutation = useMutation({
-    mutationFn: async ({ old_path, new_name }: { old_path: string, new_name: string }) => {
-      return axios.post(`/stations/${station_short_name}/media/rename/`, { old_path, new_name });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['media', station_short_name] });
-      setIsRenameModalOpen(false);
-      setRenameTarget(null);
-      setRenameNewName('');
-    },
-  });
-
-  const deleteFolderMutation = useMutation({
-    mutationFn: async (path: string) => {
-      return axios.post(`/stations/${station_short_name}/media/delete_folder/`, { path });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['media', station_short_name] });
-    },
-  });
-
-  const uploadMediaMutation = useMutation({
-    mutationFn: async (file: File) => {
-      const formData = new FormData();
-      formData.append('file', file);
-      if (currentPath) {
-        formData.append('path', currentPath);
-      }
-      setIsUploading(true);
-      setUploadProgress(0);
-      return axios.post(`/stations/${station_short_name}/media/upload/`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-        onUploadProgress: (progressEvent) => {
-          const progress = progressEvent.total 
-            ? Math.round((progressEvent.loaded * 100) / progressEvent.total) 
-            : 0;
-          setUploadProgress(progress);
-        }
-      });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['media', station_short_name] });
-      setIsUploadModalOpen(false);
-      setIsUploading(false);
-      setUploadProgress(0);
-    },
-    onError: () => {
-      setIsUploading(false);
-      setUploadProgress(0);
-    }
-  });
-
-  const deleteMediaMutation = useMutation({
-    mutationFn: async (file: any) => {
-      if (file.id) {
-        return axios.delete(`/stations/${station_short_name}/media/${file.id}/`);
-      } else {
-        return axios.post(`/stations/${station_short_name}/media/delete_file/`, { path: file.path });
-      }
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['media', station_short_name] });
-    },
-  });
-
-  const handleCreateFolder = () => {
-    if (newFolderName) {
-      createFolderMutation.mutate(newFolderName);
-    }
-  };
-
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (files && files[0]) {
-      uploadMediaMutation.mutate(files[0]);
-    }
-  };
-
-  const handleDeleteMedia = (file: any) => {
-    if (window.confirm(`Voulez-vous vraiment supprimer le fichier "${file.title || file.name || file.path}" ?`)) {
-      deleteMediaMutation.mutate(file);
-    }
-  };
-
-  const { data: media, isLoading } = useQuery<any[]>({
+  const { data: media, isLoading } = useQuery<MediaFile[]>({
     queryKey: ['media', station_short_name],
     queryFn: async () => {
       const response = await axios.get(`/stations/${station_short_name}/media/`);
@@ -180,29 +92,149 @@ const StationMedia: React.FC = () => {
     },
   });
 
-  const linkFolderToPlaylistMutation = useMutation({
-    mutationFn: async ({ path, playlistId }: { path: string, playlistId: string }) => {
-      return axios.post(`/stations/${station_short_name}/playlists/${playlistId}/folders/`, { path });
+  const createFolderMutation = useMutation({
+    mutationFn: async (name: string) => {
+      return axios.post(`/stations/${station_short_name}/media/mkdir/`, { name, path: currentPath });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['media', station_short_name] });
-      setIsLinkModalOpen(false);
-      setSelectedFolderForLink(null);
-      setSelectedPlaylistId('');
-      alert('Dossier lié avec succès à la playlist !');
+      setIsNewFolderModalOpen(false);
+      setNewFolderName('');
+    },
+  });
+
+  const moveMediaMutation = useMutation({
+    mutationFn: async ({ source_path, dest_folder }: { source_path: string, dest_folder: string }) => {
+      return axios.post(`/stations/${station_short_name}/media/move/`, { source_path, dest_folder });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['media', station_short_name] });
+    },
+  });
+
+  const renameMutation = useMutation({
+    mutationFn: async ({ old_path, new_name }: { old_path: string, new_name: string }) => {
+      return axios.post(`/stations/${station_short_name}/media/rename/`, { old_path, new_name });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['media', station_short_name] });
+      setIsRenameModalOpen(false);
+    },
+  });
+
+  const deleteMediaMutation = useMutation({
+    mutationFn: async (path: string) => {
+      return axios.post(`/stations/${station_short_name}/media/delete-file/`, { path });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['media', station_short_name] });
+    },
+  });
+
+  const deleteFolderMutation = useMutation({
+    mutationFn: async (path: string) => {
+      return axios.post(`/stations/${station_short_name}/media/delete-folder/`, { path });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['media', station_short_name] });
     },
   });
 
   const updateMediaMutation = useMutation({
     mutationFn: async (data: any) => {
-      return axios.patch(`/stations/${station_short_name}/media/${selectedMedia?.id}/`, data);
+      return axios.patch(`/stations/${station_short_name}/media/${data.id}/`, data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['media', station_short_name] });
       setIsEditModalOpen(false);
-      setSelectedMedia(null);
     },
   });
+
+  const linkFolderToPlaylistMutation = useMutation({
+    mutationFn: async ({ path, playlistId }: { path: string, playlistId: string }) => {
+      return axios.post(`/stations/${station_short_name}/media/assign-folder-to-playlist/`, { 
+        folder_path: path, 
+        playlist_id: playlistId 
+      });
+    },
+    onSuccess: (response) => {
+      queryClient.invalidateQueries({ queryKey: ['media', station_short_name] });
+      setIsLinkModalOpen(false);
+      setSelectedFolderForLink(null);
+      setSelectedPlaylistId('');
+      alert(`${response.data.count} fichiers du dossier "${response.data.folder}" ont été ajoutés à la playlist "${response.data.playlist}" !`);
+    },
+    onError: (error: any) => {
+      alert(`Erreur : ${error.response?.data?.error || 'Une erreur est survenue'}`);
+    }
+  });
+
+  const [draggedItem, setDraggedItem] = useState<any>(null);
+
+  const handleDragStart = (e: React.DragEvent, item: any) => {
+    setDraggedItem(item);
+    e.dataTransfer.setData('application/json', JSON.stringify(item));
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragOver = (e: React.DragEvent, targetFolder: any) => {
+    if (draggedItem && draggedItem.path !== targetFolder.path) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent, targetFolder: any) => {
+    e.preventDefault();
+    const data = JSON.parse(e.dataTransfer.getData('application/json'));
+    if (data.path !== targetFolder.path) {
+      moveMediaMutation.mutate({ source_path: data.path, dest_folder: targetFolder.path });
+    }
+    setDraggedItem(null);
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    setIsUploading(true);
+    setUploadProgress(0);
+
+    const formData = new FormData();
+    for (let i = 0; i < files.length; i++) {
+      formData.append('file', files[i]);
+    }
+    formData.append('path', currentPath);
+
+    try {
+      await axios.post(`/stations/${station_short_name}/media/upload/`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        onUploadProgress: (progressEvent) => {
+          const percentCompleted = Math.round((progressEvent.loaded * 100) / (progressEvent.total || 1));
+          setUploadProgress(percentCompleted);
+        }
+      });
+      queryClient.invalidateQueries({ queryKey: ['media', station_short_name] });
+      setIsUploadModalOpen(false);
+    } catch (err) {
+      console.error(err);
+      alert('Erreur lors du téléchargement');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleCreateFolder = () => {
+    if (newFolderName) {
+      createFolderMutation.mutate(newFolderName);
+    }
+  };
+
+  const handleDeleteMedia = (file: any) => {
+    if (window.confirm(`Voulez-vous vraiment supprimer le fichier "${file.path}" ?`)) {
+      deleteMediaMutation.mutate(file.path);
+    }
+  };
 
   const handleEditClick = (file: any) => {
     if (file.type === 'directory') {
@@ -281,6 +313,26 @@ const StationMedia: React.FC = () => {
           <h1 className="fw-800 text-main mb-0">Gestion des Médias</h1>
         </div>
         <div className="d-flex gap-2">
+          <div className="bg-light-soft rounded-3 p-1 d-flex gap-1 me-2 shadow-sm border border-white border-opacity-10">
+            <Button 
+              variant={activeTab === 'files' ? 'danger' : 'link'} 
+              size="sm" 
+              className={`px-3 py-1 fw-700 ${activeTab === 'files' ? 'text-white' : 'text-muted-soft'}`}
+              onClick={() => setActiveTab('files')}
+              icon={<Folder size={16} />}
+            >
+              Fichiers
+            </Button>
+            <Button 
+              variant={activeTab === 'titles' ? 'danger' : 'link'} 
+              size="sm" 
+              className={`px-3 py-1 fw-700 ${activeTab === 'titles' ? 'text-white' : 'text-muted-soft'}`}
+              onClick={() => setActiveTab('titles')}
+              icon={<Type size={16} />}
+            >
+              Mise à jour Titres
+            </Button>
+          </div>
           <Button variant="light" icon={<FolderPlus size={20} />} onClick={() => setIsNewFolderModalOpen(true)}>
             Nouveau dossier
           </Button>
@@ -293,146 +345,180 @@ const StationMedia: React.FC = () => {
         </div>
       </div>
 
-      <div className="bw-section p-0 overflow-hidden">
-        <div className="p-3 border-bottom bg-light-soft d-flex align-items-center gap-2 overflow-x-auto">
-          <Button 
-            variant="link" 
-            size="sm" 
-            className={`p-1 ${currentPath === '' ? 'text-main fw-800' : 'text-muted-soft'}`}
-            onClick={() => navigateTo('')}
-          >
-            Station Media
-          </Button>
-          {breadcrumbs.map((crumb, idx) => {
-            const path = breadcrumbs.slice(0, idx + 1).join('/');
-            return (
-              <React.Fragment key={path}>
-                <ChevronRight size={14} className="text-muted-soft opacity-50" />
-                <Button 
-                  variant="link" 
-                  size="sm" 
-                  className={`p-1 ${idx === breadcrumbs.length - 1 ? 'text-main fw-800' : 'text-muted-soft'}`}
-                  onClick={() => navigateTo(path)}
-                >
-                  {crumb}
-                </Button>
-              </React.Fragment>
-            );
-          })}
-        </div>
-
-        <div className="p-4 border-bottom bg-light-soft d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
-          <div className="position-relative flex-grow-1 max-width-md">
-            <Search className="position-absolute top-50 start-0 translate-middle-y ms-3 text-muted opacity-50" size={18} />
-            <input 
-              type="text" 
-              className="form-control ps-5 bg-surface border-0 shadow-none" 
-              placeholder="Rechercher un fichier ou un dossier..." 
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
+      {activeTab === 'titles' ? (
+        <TitleManager />
+      ) : (
+        <div className="bw-section p-0 overflow-hidden">
+          <div className="p-3 border-bottom bg-light-soft d-flex align-items-center gap-2 overflow-x-auto">
+            <Button 
+              variant="link" 
+              size="sm" 
+              className={`p-1 ${currentPath === '' ? 'text-main fw-800' : 'text-muted-soft'}`}
+              onClick={() => navigateTo('')}
+            >
+              Station Media
+            </Button>
+            {breadcrumbs.map((crumb, idx) => {
+              const path = breadcrumbs.slice(0, idx + 1).join('/');
+              return (
+                <React.Fragment key={path}>
+                  <ChevronRight size={14} className="text-muted-soft opacity-50" />
+                  <Button 
+                    variant="link" 
+                    size="sm" 
+                    className={`p-1 ${idx === breadcrumbs.length - 1 ? 'text-main fw-800' : 'text-muted-soft'}`}
+                    onClick={() => navigateTo(path)}
+                  >
+                    {crumb}
+                  </Button>
+                </React.Fragment>
+              );
+            })}
           </div>
-          <div className="d-flex align-items-center gap-3">
-            <span className="text-muted-soft small fw-600">{media?.length || 0} fichiers</span>
-            <div className="vr opacity-10"></div>
-            <Button variant="link" size="sm" icon={<CheckSquare size={18} />} className="p-0 text-muted-soft fw-600">Sélectionner</Button>
-          </div>
-        </div>
 
-        <div className="table-responsive">
-          <table className="table mb-0">
-            <thead>
-              <tr>
-                <th style={{ width: '40px' }}></th>
-                <th>Nom</th>
-                <th>Artiste / Album</th>
-                <th>Durée</th>
-                <th className="text-end">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredMedia?.length === 0 ? (
+          <div className="p-4 border-bottom bg-light-soft d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+            <div className="position-relative flex-grow-1 max-width-md">
+              <Search className="position-absolute top-50 start-0 translate-middle-y ms-3 text-muted opacity-50" size={18} />
+              <input 
+                type="text" 
+                className="form-control ps-5 bg-surface border-0 shadow-none" 
+                placeholder="Rechercher un fichier ou un dossier..." 
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+            <div className="d-flex align-items-center gap-3">
+              <div 
+                className={`p-2 rounded-3 border-2 border-dashed transition-all ${draggedItem ? 'border-primary bg-primary-soft scale-110 shadow-sm' : 'border-transparent text-muted-soft'}`}
+                onDragOver={(e) => {
+                  if (currentPath !== '') {
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = 'move';
+                  }
+                }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  const data = JSON.parse(e.dataTransfer.getData('application/json'));
+                  const parentPath = currentPath.split('/').slice(0, -1).join('/');
+                  moveMediaMutation.mutate({ 
+                    source_path: data.path, 
+                    dest_folder: parentPath 
+                  });
+                  setDraggedItem(null);
+                }}
+              >
+                <ArrowLeft size={20} className={draggedItem ? 'text-primary animate-pulse' : 'opacity-20'} />
+                {draggedItem && <span className="ms-2 smaller fw-700 text-primary">Déplacer vers parent</span>}
+              </div>
+              <div className="vr opacity-10"></div>
+              <span className="text-muted-soft small fw-600">{media?.length || 0} fichiers</span>
+              <div className="vr opacity-10"></div>
+              <Button variant="link" size="sm" icon={<CheckSquare size={18} />} className="p-0 text-muted-soft fw-600">Sélectionner</Button>
+            </div>
+          </div>
+
+          <div className="table-responsive">
+            <table className="table mb-0">
+              <thead>
                 <tr>
-                  <td colSpan={5} className="text-center py-5">
-                    <Music size={48} className="text-muted-soft opacity-20 mb-3" />
-                    <p className="text-muted-soft fw-600">Aucun fichier média trouvé</p>
-                  </td>
+                  <th style={{ width: '40px' }}></th>
+                  <th>Nom</th>
+                  <th>Artiste / Album</th>
+                  <th>Durée</th>
+                  <th className="text-end">Actions</th>
                 </tr>
-              ) : (
-                filteredMedia?.map((file: any) => (
-                  <tr key={file.id || file.path} className="hover-bg-light-soft transition-all">
-                    <td className="ps-4">
-                      <div className="bg-light-soft rounded-3 overflow-hidden d-flex align-items-center justify-content-center" style={{ width: '44px', height: '44px', minWidth: '44px' }}>
-                        {file.type === 'directory' ? (
-                          <div className="bg-primary-soft text-primary w-100 h-100 d-flex align-items-center justify-content-center">
-                            <FolderPlus size={18} />
-                          </div>
-                        ) : file.song?.art ? (
-                          <img src={file.song.art} alt="Art" className="w-100 h-100 object-fit-cover" />
-                        ) : (
-                          <div className="bg-primary-soft text-primary w-100 h-100 d-flex align-items-center justify-content-center">
-                            <FileAudio size={18} />
-                          </div>
-                        )}
-                      </div>
-                    </td>
-                    <td 
-                      className={file.type === 'directory' ? 'cursor-pointer' : ''}
-                      onClick={() => file.type === 'directory' && navigateTo(file.path)}
-                    >
-                      <p className={`fw-700 text-main mb-0 ${file.type === 'directory' ? 'hover-text-primary' : ''}`}>
-                        {file.type === 'directory' && <Folder size={16} className="me-2 text-primary opacity-50" />}
-                        {file.title || file.name || (file.path_short || file.path)?.split('/').pop()}
-                      </p>
-                      <span className="text-muted-soft smaller fw-600">{file.path_short || file.path}</span>
-                    </td>
-                    <td>
-                      <p className="text-main mb-0 small fw-600">{file.artist || (file.type === 'directory' ? '' : 'Artiste inconnu')}</p>
-                      <span className="text-muted-soft smaller">{file.album || (file.type === 'directory' ? '' : 'Album inconnu')}</span>
-                      {file.playlists && file.playlists.length > 0 && (
-                        <div className="mt-1 d-flex flex-wrap gap-1">
-                          {file.playlists.map((pid: number) => {
-                            const p = playlists?.find(pl => pl.id === pid);
-                            return p ? (
-                              <span key={pid} className="badge bg-primary-soft text-primary smaller fw-600 px-2 py-1">
-                                {p.name}
-                              </span>
-                            ) : null;
-                          })}
-                        </div>
-                      )}
-                    </td>
-                    <td>
-                      {file.type !== 'directory' && (
-                        <span className="badge bg-light-soft text-muted-soft fw-700">{file.length_text}</span>
-                      )}
-                    </td>
-                    <td className="pe-4 text-end">
-                      <div className="d-flex justify-content-end gap-2">
-                        {file.type === 'directory' ? (
-                          <>
-                            <Button variant="light" size="sm" icon={<Music size={16} />} title="Lier à une playlist" onClick={() => {
-                              setSelectedFolderForLink(file.path);
-                              setIsLinkModalOpen(true);
-                            }} />
-                            <Button variant="light" size="sm" icon={<Edit2 size={16} />} onClick={() => handleEditClick(file)} />
-                            <Button variant="light" size="sm" className="hover-text-danger" icon={<Trash2 size={16} />} onClick={() => handleDeleteFolder(file.path)} />
-                          </>
-                        ) : (
-                          <>
-                            <Button variant="light" size="sm" icon={<Edit2 size={16} />} onClick={() => handleEditClick(file)} />
-                            <Button variant="light" size="sm" className="hover-text-danger" icon={<Trash2 size={16} />} onClick={() => handleDeleteMedia(file)} />
-                          </>
-                        )}
-                      </div>
+              </thead>
+              <tbody>
+                {filteredMedia?.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="text-center py-5">
+                      <Music size={48} className="text-muted-soft opacity-20 mb-3" />
+                      <p className="text-muted-soft fw-600">Aucun fichier média trouvé</p>
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                ) : (
+                  filteredMedia?.map((file: any) => (
+                    <tr 
+                      key={file.id || file.path} 
+                      className={`hover-bg-light-soft transition-all ${draggedItem?.path === file.path ? 'opacity-50' : ''}`}
+                      draggable={file.type !== 'directory' || true} // On peut déplacer fichiers et dossiers
+                      onDragStart={(e) => handleDragStart(e, file)}
+                      onDragOver={(e) => file.type === 'directory' ? handleDragOver(e, file) : undefined}
+                      onDrop={(e) => file.type === 'directory' ? handleDrop(e, file) : undefined}
+                    >
+                      <td className="ps-4">
+                        <div className="bg-light-soft rounded-3 overflow-hidden d-flex align-items-center justify-content-center" style={{ width: '44px', height: '44px', minWidth: '44px' }}>
+                          {file.type === 'directory' ? (
+                            <div className="bg-primary-soft text-primary w-100 h-100 d-flex align-items-center justify-content-center">
+                              <FolderPlus size={18} />
+                            </div>
+                          ) : file.song?.art ? (
+                            <img src={file.song.art} alt="Art" className="w-100 h-100 object-fit-cover" />
+                          ) : (
+                            <div className="bg-primary-soft text-primary w-100 h-100 d-flex align-items-center justify-content-center">
+                              <FileAudio size={18} />
+                            </div>
+                          )}
+                        </div>
+                      </td>
+                      <td 
+                        className={file.type === 'directory' ? 'cursor-pointer' : ''}
+                        onClick={() => file.type === 'directory' && navigateTo(file.path)}
+                      >
+                        <p className={`fw-700 text-main mb-0 ${file.type === 'directory' ? 'hover-text-primary' : ''}`}>
+                          {file.type === 'directory' && <Folder size={16} className="me-2 text-primary opacity-50" />}
+                          {file.title || file.name || (file.path_short || file.path)?.split('/').pop()}
+                        </p>
+                        <span className="text-muted-soft smaller fw-600">{file.path_short || file.path}</span>
+                      </td>
+                      <td>
+                        <p className="text-main mb-0 small fw-600">{file.artist || (file.type === 'directory' ? '' : 'Artiste inconnu')}</p>
+                        <span className="text-muted-soft smaller">{file.album || (file.type === 'directory' ? '' : 'Album inconnu')}</span>
+                        {file.playlists && file.playlists.length > 0 && (
+                          <div className="mt-1 d-flex flex-wrap gap-1">
+                            {file.playlists.map((pid: number) => {
+                              const p = playlists?.find(pl => pl.id === pid);
+                              return p ? (
+                                <span key={pid} className="badge bg-primary-soft text-primary smaller fw-600 px-2 py-1">
+                                  {p.name}
+                                </span>
+                              ) : null;
+                            })}
+                          </div>
+                        )}
+                      </td>
+                      <td>
+                        {file.type !== 'directory' && (
+                          <span className="badge bg-light-soft text-muted-soft fw-700">{file.length_text}</span>
+                        )}
+                      </td>
+                      <td className="pe-4 text-end">
+                        <div className="d-flex justify-content-end gap-2">
+                          {file.type === 'directory' ? (
+                            <>
+                              <Button variant="light" size="sm" icon={<Music size={16} />} title="Lier à une playlist" onClick={() => {
+                                setSelectedFolderForLink(file.path);
+                                setIsLinkModalOpen(true);
+                              }} />
+                              <Button variant="light" size="sm" icon={<Edit2 size={16} />} onClick={() => handleEditClick(file)} />
+                              <Button variant="light" size="sm" className="hover-text-danger" icon={<Trash2 size={16} />} onClick={() => handleDeleteFolder(file.path)} />
+                            </>
+                          ) : (
+                            <>
+                              <Button variant="light" size="sm" icon={<Edit2 size={16} />} onClick={() => handleEditClick(file)} />
+                              <Button variant="light" size="sm" className="hover-text-danger" icon={<Trash2 size={16} />} onClick={() => handleDeleteMedia(file)} />
+                            </>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
+      )}
 
       <Modal 
         isOpen={isUploadModalOpen} 

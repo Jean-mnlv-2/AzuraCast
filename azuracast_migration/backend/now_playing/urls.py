@@ -8,3 +8,4 @@ router.register(r'', NowPlayingViewSet, basename='nowplaying')
 urlpatterns = [
     path('', include(router.urls)),
 ]
+

@@ -5,7 +5,12 @@ from django.db.models import Count, Sum, Max, Avg, Q, F
 from django.utils import timezone
 from .models import Analytics, Listener, AdvertisementPlayback
 from .serializers import AnalyticsSerializer
+from users.permissions import IsBantuWaveAdmin
+from billing.models import Subscription, Plan, Transaction
+from stations.models import Station
 import csv
+import docker
+import psutil
 from django.http import HttpResponse
 
 class AnalyticsViewSet(viewsets.ReadOnlyModelViewSet):
@@ -24,6 +29,62 @@ class AnalyticsViewSet(viewsets.ReadOnlyModelViewSet):
             queryset = queryset.filter(type=type_param)
             
         return queryset
+
+    @action(detail=False, methods=['get'], url_path='global-dashboard', permission_classes=[IsBantuWaveAdmin])
+    def global_dashboard(self, request):
+        """
+        Global Dashboard for SuperAdmin.
+        Returns Business KPIs (MRR, Churn) and Technical KPIs (CPU, BW, Listeners).
+        """
+        # 1. Business KPIs
+        active_subs = Subscription.objects.filter(status='active')
+        mrr = active_subs.aggregate(total=Sum('plan__price_monthly'))['total'] or 0
+        total_subscribers = active_subs.count()
+        
+        last_30_days = timezone.now() - timezone.timedelta(days=30)
+        canceled_last_30 = Subscription.objects.filter(status='canceled', updated_at__gte=last_30_days).count()
+        total_at_start = Subscription.objects.exclude(status='canceled').count() + canceled_last_30
+        churn_rate = (canceled_last_30 / total_at_start * 100) if total_at_start > 0 else 0
+        
+        # 2. Technical KPIs
+        cpu_usage = psutil.cpu_percent(interval=0.1)
+        memory_usage = psutil.virtual_memory().percent
+        
+        unique_listeners = Listener.objects.filter(timestamp_end__isnull=True).values('listener_ip').distinct().count()
+        
+        est_bandwidth_gbps = (unique_listeners * 128 / 1024 / 1024) if unique_listeners > 0 else 0
+        
+        # 3. Critical Alerts
+        critical_alerts = []
+        offline_stations = Station.objects.filter(is_enabled=True, has_started=False).count()
+        if offline_stations > 0:
+            critical_alerts.append({
+                'level': 'critical',
+                'message': f"{offline_stations} stations are currently offline/unreachable."
+            })
+            
+        past_due = Subscription.objects.filter(status='past_due').count()
+        if past_due > 0:
+            critical_alerts.append({
+                'level': 'warning',
+                'message': f"{past_due} subscriptions are past due."
+            })
+
+        return Response({
+            'business': {
+                'mrr': mrr,
+                'total_subscribers': total_subscribers,
+                'churn_rate': round(churn_rate, 2),
+                'currency': 'XAF'
+            },
+            'technical': {
+                'cpu_usage': cpu_usage,
+                'memory_usage': memory_usage,
+                'unique_listeners': unique_listeners,
+                'bandwidth_gbps': round(est_bandwidth_gbps, 3)
+            },
+            'alerts': critical_alerts
+        })
 
     @action(detail=False, methods=['get'], url_path='(?P<station_short_name>[^/.]+)/advertisements')
     def advertisement_report(self, request, station_short_name=None):

@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Mail, Lock, LogIn, Radio, Languages, Zap, Activity, Globe, Eye, EyeOff, UserPlus } from 'lucide-react';
+import { Mail, Lock, LogIn, Languages, Zap, Activity, Globe, Eye, EyeOff, UserPlus } from 'lucide-react';
 import { useAuthStore } from '../../store/useAuthStore';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
 import Modal from '../../components/ui/Modal';
 import api from '../../api/axios';
+import logo from '../../assets/logo.png';
 
 const Login: React.FC = () => {
   const { t, i18n } = useTranslation();
@@ -74,7 +75,7 @@ const Login: React.FC = () => {
           <div className="col-lg-5 d-none d-lg-flex flex-column justify-content-between p-5 auth-brand-panel position-relative">
             <div className="position-relative" style={{ zIndex: 1 }}>
               <div className="bg-white bg-opacity-15 rounded-3 d-inline-flex p-3 mb-4">
-                <Radio className="text-white" size={44} />
+                <img src={logo} alt="BantuWave Logo" style={{ height: '80px', width: 'auto' }} />
               </div>
               <h1 className="fw-bold tracking-tight mb-2 display-5">BantuWave</h1>
               <p className="lead mb-4 opacity-90" style={{ fontSize: '1.05rem', lineHeight: 1.55 }}>

@@ -13,7 +13,7 @@ class Command(BaseCommand):
         now = timezone.now()
         one_day_ago = now - timedelta(days=1)
         
-        stations = Station.objects.all()
+        stations = Station.objects.all().iterator()
         for station in stations:
             # Daily aggregation
             daily_stats = SongHistory.objects.filter(

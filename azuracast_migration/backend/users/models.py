@@ -36,10 +36,18 @@ class User(AbstractBaseUser, PermissionsMixin):
     show_24_hour_time = models.BooleanField(default=True)
     two_factor_secret = models.CharField(max_length=255, null=True, blank=True)
     
-    groups = models.ManyToManyField(Group, related_name='custom_user_set', blank=True)
+    groups = models.ManyToManyField(Group, related_name='user_set', blank=True)
     
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
+    
+    creator = models.ForeignKey(
+        'self', 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True, 
+        related_name='created_users'
+    )
     
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

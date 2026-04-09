@@ -1,23 +1,57 @@
-# Utiliser une image Python officielle comme image de base
-FROM python:3.11-slim
+# Stage 1: Build stage
+FROM python:3.11-slim as builder
 
-# Définir les variables d'environnement
 ENV PYTHONDONTWRITEBYTECODE 1
 ENV PYTHONUNBUFFERED 1
 
-# Définir le répertoire de travail dans le conteneur
 WORKDIR /app
 
-# psycopg2-binary : pas de build; libmagic1 pour python-magic; curl pour healthcheck
-RUN apt-get update && apt-get install -y --no-install-recommends libmagic1 curl \
+# Install build dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    libpq-dev \
+    libmagic1 \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# Install dependencies into a wheels directory
+RUN pip wheel --no-cache-dir --wheel-dir /app/wheels -r requirements.txt
 
-COPY . .
-COPY entrypoint.sh /entrypoint.sh
+
+# Stage 2: Final stage
+FROM python:3.11-slim
+
+ENV PYTHONDONTWRITEBYTECODE 1
+ENV PYTHONUNBUFFERED 1
+ENV PATH="/home/bantuwave/.local/bin:${PATH}"
+
+WORKDIR /app
+
+# Install runtime dependencies and create non-root user
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libpq5 \
+    libmagic1 \
+    curl \
+    ffmpeg \
+    && rm -rf /var/lib/apt/lists/* \
+    && useradd -m -u 1000 bantuwave \
+    && mkdir -p /app/storage/media /app/staticfiles \
+    && chown -R bantuwave:bantuwave /app
+
+# Copy wheels from builder and install
+COPY --from=builder /app/wheels /wheels
+COPY --from=builder /app/requirements.txt .
+RUN pip install --no-cache-dir --no-index --find-links=/wheels -r requirements.txt
+
+# Copy project files
+COPY --chown=bantuwave:bantuwave . .
+
+# Prepare entrypoint
+COPY --chown=bantuwave:bantuwave entrypoint.sh /entrypoint.sh
 RUN sed -i 's/\r$//' /entrypoint.sh && chmod +x /entrypoint.sh
+
+# Switch to non-root user
+USER bantuwave
 
 EXPOSE 8000
 

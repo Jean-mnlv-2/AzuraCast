@@ -13,7 +13,7 @@ def scan_advertisement_logs():
     """
     Scans Liquidsoap logs for confirmation of ad playbacks.
     """
-    stations = Station.objects.all()
+    stations = Station.objects.all().iterator()
     confirmed_count = 0
     
     for station in stations:
@@ -29,7 +29,7 @@ def scan_advertisement_logs():
                     station=station,
                     is_confirmed_by_log=False,
                     timestamp_start__gte=timezone.now() - timedelta(hours=1)
-                )
+                ).iterator()
                 
                 for playback in unconfirmed:
                     pattern = rf"ad_id=\"{playback.advertisement.id}\""
@@ -52,7 +52,7 @@ def aggregate_analytics_daily():
     now = timezone.now()
     one_day_ago = now - timedelta(days=1)
     
-    stations = Station.objects.all()
+    stations = Station.objects.all().iterator()
     for station in stations:
         daily_stats = SongHistory.objects.filter(
             station=station,
@@ -75,14 +75,14 @@ def aggregate_analytics_daily():
                 'number_unique': daily_stats['unique_listeners'] or 0,
             }
         )
-    return f"Aggregated daily analytics for {stations.count()} stations"
+    return "Aggregated daily analytics"
 
 @shared_task
 def aggregate_analytics_hourly():
     now = timezone.now()
     one_hour_ago = now - timedelta(hours=1)
     
-    stations = Station.objects.all()
+    stations = Station.objects.all().iterator()
     for station in stations:
         # Hourly aggregation
         hourly_stats = SongHistory.objects.filter(

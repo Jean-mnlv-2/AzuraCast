@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import Modal from '../../../components/ui/Modal';
 import Button from '../../../components/ui/Button';
 import Input from '../../../components/ui/Input';
-import { Save, X, Info, Music, Clock, Settings2 } from 'lucide-react';
+import { Save, Info, Music, Settings2 } from 'lucide-react';
 
 interface MediaEditModalProps {
   isOpen: boolean;
